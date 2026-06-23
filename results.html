@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Matched Names - Rosebound Letters</title>
+    <meta
+      name="description"
+      content="Matched names in the Rosebound Letters anonymous confession registry."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500;1,600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="paper-page">
+    <div class="petal-field" aria-hidden="true"></div>
+
+    <main class="paper-screen">
+      <header class="site-header paper-header">
+        <a class="brand-mark" href="index.html" aria-label="Rosebound Letters home">
+          <span class="brand-sigil">R</span>
+          <span>Rosebound Letters</span>
+        </a>
+      </header>
+
+      <section class="page-shell" aria-labelledby="resultsTitle">
+        <div class="page-heading">
+          <p class="eyebrow dark">Matched names</p>
+          <h1 id="resultsTitle">Sealed Papers Found in the Candlelit Registry</h1>
+          <p id="resultSummary" class="page-subtitle">
+            Search from the home page to reveal matching names.
+          </p>
+        </div>
+
+        <form class="inline-search" action="results.html" method="get" aria-label="Search again">
+          <input
+            id="searchName"
+            name="q"
+            type="search"
+            autocomplete="off"
+            placeholder="Search another name"
+          />
+          <button class="button primary" type="submit">
+            <i data-lucide="search"></i>
+            <span>Search</span>
+          </button>
+        </form>
+
+        <div class="search-results" id="searchResults" aria-live="polite">
+          <p class="empty-state">No sealed names are showing yet.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

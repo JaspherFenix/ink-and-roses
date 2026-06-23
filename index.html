@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sketch the Face Behind Your Feelings</title>
+    <meta
+      name="description"
+      content="A medieval anonymous confession registry for searching names, opening paper letters, and sketching feelings."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500;1,600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="home-page">
+    <div class="petal-field" aria-hidden="true"></div>
+
+    <main class="scroll-page">
+      <section class="home-screen" id="home" aria-labelledby="pageTitle">
+        <img
+          class="home-image"
+          src="assets/medieval-dream-garden.png"
+          alt="A moonlit medieval garden with roses, old stone arches, and a mysterious girl."
+        />
+        <div class="home-shade" aria-hidden="true"></div>
+        <div class="vine-frame" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <div class="hero-search">
+          <p class="eyebrow">Anonymous medieval confessions</p>
+          <h1 id="pageTitle">Sketch the Face Behind Your Feelings</h1>
+          <p class="home-subtitle">
+            Search a name whispered beneath the roses, then open the sealed paper
+            confession and the sketch hidden inside it.
+          </p>
+
+          <form class="home-search-form" action="results.html" method="get" aria-label="Search sealed names">
+            <input
+              id="searchName"
+              name="q"
+              type="search"
+              autocomplete="off"
+              placeholder="Search a name"
+            />
+            <button class="button primary search-button" type="submit">
+              <i data-lucide="search"></i>
+              <span>Search</span>
+            </button>
+          </form>
+
+          <div class="home-actions" aria-label="Home actions">
+            <button class="button primary home-action-button" type="button" data-scroll-target="send">
+              <i data-lucide="feather"></i>
+              <span>Send a message</span>
+            </button>
+            <button class="button archive-action-button" type="button" data-scroll-target="archive" aria-label="Go to archive">
+              <i data-lucide="archive"></i>
+              <span>Archive</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="home-content-section compose-section" id="send" aria-labelledby="composeTitle">
+        <div class="page-shell">
+          <div class="page-heading">
+            <p class="eyebrow dark">The confession chamber</p>
+            <h1 id="composeTitle">Write What the Roses Kept Quiet</h1>
+            <p class="page-subtitle">
+              Send an anonymous paper confession with a sketch from memory.
+            </p>
+          </div>
+
+          <div class="confession-workbench">
+            <form class="confession-panel" id="confessionForm" aria-label="Anonymous confession form">
+              <div class="panel-heading" id="confess">
+                <p class="eyebrow dark">The sealed whisper</p>
+                <h2>Anonymous confession</h2>
+              </div>
+
+              <label class="field">
+                <span>To</span>
+                <input
+                  id="recipientName"
+                  name="recipient"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="The person in your dream"
+                  required
+                />
+              </label>
+
+              <label class="field">
+                <span>Message</span>
+                <textarea
+                  id="confessionMessage"
+                  name="message"
+                  rows="8"
+                  placeholder="I have been keeping this quiet beneath the roses..."
+                  required
+                ></textarea>
+              </label>
+
+              <div class="message-metrics" aria-live="polite">
+                <span id="wordCount">0 words</span>
+                <span id="inkMood">Rose ink</span>
+              </div>
+
+              <button class="button primary send-button" type="submit">
+                <i data-lucide="send"></i>
+                <span>Send confession</span>
+              </button>
+              <p class="form-response" role="status" aria-live="polite"></p>
+            </form>
+
+            <section class="sketch-panel" id="sketch" aria-labelledby="sketchTitle">
+              <div class="panel-heading">
+                <p class="eyebrow dark">The portrait from memory</p>
+                <h2 id="sketchTitle">Sketch her face</h2>
+              </div>
+
+              <div class="sketch-toolbar" aria-label="Sketch tools">
+                <button class="tool-button icon-only is-active" type="button" data-tool="pen" aria-label="Pen">
+                  <i data-lucide="pen-line"></i>
+                </button>
+                <button class="tool-button icon-only" type="button" data-tool="eraser" aria-label="Eraser">
+                  <i data-lucide="eraser"></i>
+                </button>
+                <label class="tool-control swatch-control" aria-label="Ink color">
+                  <input id="inkColor" type="color" value="#541928" />
+                  <span>Ink</span>
+                </label>
+                <label class="tool-control range-control">
+                  <span>Size</span>
+                  <input id="brushSize" type="range" min="2" max="34" value="7" />
+                </label>
+                <button class="tool-button icon-only" type="button" id="undoSketch" aria-label="Undo">
+                  <i data-lucide="undo-2"></i>
+                </button>
+                <button class="tool-button icon-only" type="button" id="clearSketch" aria-label="Clear">
+                  <i data-lucide="trash-2"></i>
+                </button>
+                <button class="tool-button icon-only" type="button" id="downloadSketch" aria-label="Download sketch">
+                  <i data-lucide="download"></i>
+                </button>
+              </div>
+
+              <div class="canvas-frame">
+                <canvas
+                  id="loveSketch"
+                  width="900"
+                  height="900"
+                  aria-label="Sketch canvas"
+                ></canvas>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section class="home-content-section archive-section" id="archive" aria-labelledby="archiveTitle">
+        <div class="page-shell">
+          <div class="page-heading">
+            <p class="eyebrow dark">The paper archive</p>
+            <h1 id="archiveTitle">Letters Waiting Beneath the Gold Seal</h1>
+            <p class="page-subtitle">
+              Open a saved paper to read the confession and see the sketch beside it.
+            </p>
+          </div>
+
+          <div class="archive-grid" id="archiveResults" aria-live="polite"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
