@@ -527,8 +527,12 @@ function drawLine(from, to) {
   ctx.restore();
 }
 
+function activeToolDraws() {
+  return activeTool === "pen" || activeTool === "eraser";
+}
+
 function startSketch(event) {
-  if (!canvas) {
+  if (!canvas || !activeToolDraws()) {
     return;
   }
 
@@ -568,8 +572,14 @@ function setActiveTool(tool) {
   activeTool = tool;
 
   toolButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.tool === tool);
+    const isActive = button.dataset.tool === tool;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
   });
+
+  if (canvas) {
+    canvas.classList.toggle("is-navigation-mode", !activeToolDraws());
+  }
 }
 
 function downloadSketch() {
@@ -749,8 +759,14 @@ if (canvas) {
 }
 
 toolButtons.forEach((button) => {
-  button.addEventListener("click", () => setActiveTool(button.dataset.tool));
+  button.addEventListener("click", () => {
+    const selectedTool = button.dataset.tool;
+    const toggledDrawingTool = selectedTool === activeTool && activeToolDraws();
+    setActiveTool(toggledDrawingTool ? "" : selectedTool);
+  });
 });
+
+setActiveTool(activeTool);
 
 undoButton?.addEventListener("click", restoreSketchState);
 

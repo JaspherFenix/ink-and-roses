@@ -823,6 +823,11 @@ h2 {
   touch-action: none;
 }
 
+#loveSketch.is-navigation-mode {
+  cursor: grab;
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
 .letter-page {
   display: grid;
   justify-items: center;
@@ -1018,7 +1023,7 @@ h2 {
   }
 
   .site-header {
-    padding: 18px 20px;
+    padding: 14px 16px;
     align-items: flex-start;
   }
 
@@ -1043,26 +1048,35 @@ h2 {
 
   .hero-search,
   .page-shell {
-    padding: 58px 24px;
+    padding: 38px 18px;
   }
 
   .hero-search {
-    padding: 72px 24px 84px;
+    padding: 52px 18px 44px;
   }
 
   h1,
   .page-heading h1,
   .letter-intro h1 {
-    font-size: 40px;
+    font-size: 36px;
   }
 
   h2 {
-    font-size: 28px;
+    font-size: 26px;
   }
 
   .home-subtitle,
   .page-subtitle {
-    font-size: 21px;
+    font-size: 19px;
+  }
+
+  .home-subtitle {
+    margin-top: 16px;
+  }
+
+  .page-heading,
+  .letter-intro {
+    margin-bottom: 22px;
   }
 
   .home-search-form,
@@ -1073,18 +1087,45 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .home-search-form,
+  .home-actions {
+    width: min(100%, 420px);
+  }
+
+  .home-search-form {
+    gap: 8px;
+    margin-top: 24px;
+  }
+
+  .home-actions {
+    gap: 8px;
+    margin-top: 12px;
+  }
+
   .home-search-form input,
   .inline-search input {
-    font-size: 23px;
+    min-height: 50px;
+    padding: 10px 13px;
+    font-size: 20px;
+  }
+
+  .search-button,
+  .home-action-button,
+  .archive-action-button {
+    min-height: 50px;
+  }
+
+  .archive-action-button {
+    width: 50px;
   }
 
   .confession-panel,
   .sketch-panel {
-    padding: 18px;
+    padding: 16px;
   }
 
   .field textarea {
-    min-height: 240px;
+    min-height: 210px;
   }
 
   .sketch-panel {
@@ -1094,21 +1135,22 @@ h2 {
 
   .sketch-toolbar {
     display: grid;
-    grid-template-columns: repeat(2, 48px) 84px repeat(3, 48px);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     margin-bottom: 14px;
     align-items: center;
   }
 
   .sketch-toolbar .tool-button,
   .sketch-toolbar .tool-control {
-    width: auto;
+    width: 100%;
   }
 
   .sketch-toolbar .tool-button.icon-only {
-    width: 48px;
+    width: 100%;
   }
 
   .sketch-toolbar .range-control {
+    grid-column: 1 / -1;
     flex-direction: row;
   }
 
@@ -1141,7 +1183,21 @@ h2 {
   h1,
   .page-heading h1,
   .letter-intro h1 {
-    font-size: 34px;
+    font-size: 31px;
+  }
+
+  .hero-search,
+  .page-shell {
+    padding: 28px 14px;
+  }
+
+  .hero-search {
+    padding: 44px 14px 34px;
+  }
+
+  .home-search-form,
+  .home-actions {
+    width: min(100%, 330px);
   }
 
   .eyebrow {
@@ -1149,7 +1205,7 @@ h2 {
   }
 
   .sketch-toolbar {
-    grid-template-columns: repeat(5, 48px);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .swatch-control {
