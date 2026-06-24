@@ -10,6 +10,13 @@ const wordCount = document.querySelector("#wordCount");
 const inkMood = document.querySelector("#inkMood");
 const formResponse = document.querySelector(".form-response");
 const detailResponse = document.querySelector(".detail-response");
+const chooseReferenceButton = document.querySelector("#chooseReference");
+const referenceImageInput = document.querySelector("#referenceImageInput");
+const referenceWindow = document.querySelector("#referenceWindow");
+const referenceWindowBar = document.querySelector("#referenceWindowBar");
+const referenceImage = document.querySelector("#referenceImage");
+const closeReferenceButton = document.querySelector("#closeReference");
+const referenceResizeHandle = document.querySelector("#referenceResizeHandle");
 const canvas = document.querySelector("#loveSketch");
 const colorInput = document.querySelector("#inkColor");
 const brushInput = document.querySelector("#brushSize");
@@ -38,6 +45,8 @@ let sketchHistory = [];
 let latestConfession = null;
 let confessions = [];
 let ctx = null;
+let referenceImageUrl = "";
+let referenceInteraction = null;
 
 function demoSketchData(seed, ink = "#541928") {
   const offset = seed * 7;
@@ -387,6 +396,115 @@ function setStatus(text) {
 
   if (detailResponse) {
     detailResponse.textContent = text;
+  }
+}
+
+function clamp(value, minimum, maximum) {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
+function clearReferenceImage() {
+  if (referenceImageUrl) {
+    URL.revokeObjectURL(referenceImageUrl);
+    referenceImageUrl = "";
+  }
+
+  if (referenceImage) {
+    referenceImage.removeAttribute("src");
+  }
+
+  if (referenceImageInput) {
+    referenceImageInput.value = "";
+  }
+
+  if (referenceWindow) {
+    referenceWindow.hidden = true;
+    referenceWindow.removeAttribute("style");
+  }
+}
+
+function showReferenceImage(file) {
+  if (!referenceWindow || !referenceImage || !file?.type.startsWith("image/")) {
+    return;
+  }
+
+  if (referenceImageUrl) {
+    URL.revokeObjectURL(referenceImageUrl);
+  }
+
+  referenceImageUrl = URL.createObjectURL(file);
+  referenceImage.src = referenceImageUrl;
+  referenceWindow.hidden = false;
+}
+
+function keepReferenceWindowOnScreen() {
+  if (!referenceWindow || referenceWindow.hidden) {
+    return;
+  }
+
+  const bounds = referenceWindow.getBoundingClientRect();
+  const width = Math.min(bounds.width, window.innerWidth - 8);
+  const height = Math.min(bounds.height, window.innerHeight - 8);
+
+  referenceWindow.style.width = `${width}px`;
+  referenceWindow.style.height = `${height}px`;
+  referenceWindow.style.left = `${clamp(bounds.left, 4, Math.max(4, window.innerWidth - width - 4))}px`;
+  referenceWindow.style.top = `${clamp(bounds.top, 4, Math.max(4, window.innerHeight - height - 4))}px`;
+  referenceWindow.style.right = "auto";
+}
+
+function startReferenceInteraction(event, mode) {
+  if (!referenceWindow || referenceWindow.hidden || (event.pointerType === "mouse" && event.button !== 0)) {
+    return;
+  }
+
+  if (mode === "drag" && event.target.closest("button")) {
+    return;
+  }
+
+  event.preventDefault();
+  const bounds = referenceWindow.getBoundingClientRect();
+  referenceWindow.style.left = `${bounds.left}px`;
+  referenceWindow.style.top = `${bounds.top}px`;
+  referenceWindow.style.right = "auto";
+
+  referenceInteraction = {
+    mode,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    startLeft: bounds.left,
+    startTop: bounds.top,
+    startWidth: bounds.width,
+    startHeight: bounds.height,
+  };
+}
+
+function moveReferenceWindow(event) {
+  if (!referenceWindow || !referenceInteraction || event.pointerId !== referenceInteraction.pointerId) {
+    return;
+  }
+
+  const deltaX = event.clientX - referenceInteraction.startX;
+  const deltaY = event.clientY - referenceInteraction.startY;
+
+  if (referenceInteraction.mode === "drag") {
+    const maxLeft = Math.max(0, window.innerWidth - referenceInteraction.startWidth);
+    const maxTop = Math.max(0, window.innerHeight - referenceInteraction.startHeight);
+    referenceWindow.style.left = `${clamp(referenceInteraction.startLeft + deltaX, 0, maxLeft)}px`;
+    referenceWindow.style.top = `${clamp(referenceInteraction.startTop + deltaY, 0, maxTop)}px`;
+    return;
+  }
+
+  const maxWidth = Math.max(180, window.innerWidth - referenceInteraction.startLeft);
+  const maxHeight = Math.max(220, window.innerHeight - referenceInteraction.startTop);
+  referenceWindow.style.width = `${clamp(referenceInteraction.startWidth + deltaX, 180, maxWidth)}px`;
+  referenceWindow.style.height = `${clamp(referenceInteraction.startHeight + deltaY, 220, maxHeight)}px`;
+}
+
+function endReferenceInteraction(event) {
+  if (referenceInteraction && event.pointerId === referenceInteraction.pointerId) {
+    referenceInteraction = null;
   }
 }
 
@@ -741,6 +859,7 @@ function sealConfession(event) {
   saveConfessions();
   renderArchive();
   confessionForm.reset();
+  clearReferenceImage();
   resetSketch();
   updateMessageMetrics();
   setStatus("Your anonymous confession has been sent to the archive.");
@@ -778,6 +897,23 @@ clearButton?.addEventListener("click", () => {
 downloadButton?.addEventListener("click", downloadSketch);
 copyConfessionButton?.addEventListener("click", copyConfessionText);
 downloadConfessionButton?.addEventListener("click", downloadConfessionCard);
+chooseReferenceButton?.addEventListener("click", () => referenceImageInput?.click());
+referenceImageInput?.addEventListener("change", () => {
+  const [file] = referenceImageInput.files;
+  showReferenceImage(file);
+});
+closeReferenceButton?.addEventListener("click", clearReferenceImage);
+referenceWindowBar?.addEventListener("pointerdown", (event) => startReferenceInteraction(event, "drag"));
+referenceResizeHandle?.addEventListener("pointerdown", (event) => startReferenceInteraction(event, "resize"));
+window.addEventListener("pointermove", moveReferenceWindow);
+window.addEventListener("pointerup", endReferenceInteraction);
+window.addEventListener("pointercancel", endReferenceInteraction);
+window.addEventListener("resize", keepReferenceWindowOnScreen);
+window.addEventListener("beforeunload", () => {
+  if (referenceImageUrl) {
+    URL.revokeObjectURL(referenceImageUrl);
+  }
+});
 messageInput?.addEventListener("input", updateMessageMetrics);
 confessionForm?.addEventListener("submit", sealConfession);
 

@@ -24,7 +24,7 @@
         <img
           class="home-image"
           src="assets/medieval-dream-garden.png"
-          alt="A moonlit medieval garden with roses, old stone arches, and a mysterious girl."
+          alt="A moonlit medieval garden with roses, old stone arches, and a mysterious figure."
         />
         <div class="home-shade" aria-hidden="true"></div>
         <div class="vine-frame" aria-hidden="true">
@@ -114,6 +114,12 @@
                 <span id="inkMood">Rose ink</span>
               </div>
 
+              <button class="button reference-button" type="button" id="chooseReference">
+                <i data-lucide="image-plus"></i>
+                <span>Choose sketch reference</span>
+              </button>
+              <input id="referenceImageInput" type="file" accept="image/*" hidden />
+
               <button class="button primary send-button" type="submit">
                 <i data-lucide="send"></i>
                 <span>Send confession</span>
@@ -124,7 +130,7 @@
             <section class="sketch-panel" id="sketch" aria-labelledby="sketchTitle">
               <div class="panel-heading">
                 <p class="eyebrow dark">The portrait from memory</p>
-                <h2 id="sketchTitle">Sketch her face</h2>
+                <h2 id="sketchTitle">Sketch their face</h2>
               </div>
 
               <div class="sketch-toolbar" aria-label="Sketch tools">
@@ -180,6 +186,19 @@
         </div>
       </section>
     </main>
+
+    <aside class="reference-window" id="referenceWindow" aria-label="Sketch reference" hidden>
+      <div class="reference-window-bar" id="referenceWindowBar">
+        <span>Sketch reference</span>
+        <button class="reference-close" type="button" id="closeReference" aria-label="Close sketch reference">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <img id="referenceImage" alt="Selected sketch reference" />
+      <button class="reference-resize-handle" type="button" id="referenceResizeHandle" aria-label="Resize sketch reference">
+        <i data-lucide="move-diagonal-2"></i>
+      </button>
+    </aside>
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="script.js"></script>
