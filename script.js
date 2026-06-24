@@ -212,7 +212,7 @@ function saveConfessions() {
   try {
     window.localStorage.setItem(confessionStorageKey, JSON.stringify(confessions));
   } catch (error) {
-    console.warn("Rosebound Letters could not keep these confessions.", error);
+    console.warn("Ink and Roses could not keep these confessions.", error);
   }
 }
 
@@ -227,7 +227,7 @@ function clearSavedNonDemoConfessionsOnce() {
     window.localStorage.removeItem(legacyConfessionStorageKey);
     window.localStorage.setItem(nonDemoCleanupStorageKey, "true");
   } catch (error) {
-    console.warn("Rosebound Letters could not clear older saved confessions.", error);
+    console.warn("Ink and Roses could not clear older saved confessions.", error);
   }
 }
 
@@ -988,7 +988,7 @@ async function copyConfessionText() {
     await navigator.clipboard.writeText(text);
     setStatus("The sealed confession text has been copied.");
   } catch (error) {
-    setStatus("The confession is sealed in Rosebound Letters, but copying was blocked.");
+    setStatus("The confession is sealed in Ink and Roses, but copying was blocked.");
   }
 }
 
@@ -1026,7 +1026,7 @@ function downloadConfessionCard() {
 
     cardContext.fillStyle = "#8c6b2a";
     cardContext.font = "italic 28px Georgia";
-    cardContext.fillText("Sent from Rosebound Letters", 108, 650);
+    cardContext.fillText("Sent from Ink and Roses", 108, 650);
 
     cardContext.drawImage(sketchImage, 790, 168, 300, 300);
     cardContext.strokeStyle = "#541928";

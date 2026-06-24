@@ -169,6 +169,11 @@ h2 {
   background: rgba(255, 247, 223, 0.68);
 }
 
+img.brand-sigil {
+  object-fit: contain;
+  padding: 3px;
+}
+
 .nav-links a {
   position: relative;
   padding: 8px 0;
