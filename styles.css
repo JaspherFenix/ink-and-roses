@@ -1087,6 +1087,31 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .letter-stage:not(.is-open) {
+    height: clamp(260px, 72vw, 340px);
+    aspect-ratio: auto;
+  }
+
+  .letter-stage.is-open .sealed-card {
+    grid-template-rows: minmax(400px, 1.1fr) minmax(280px, 0.9fr);
+    min-height: clamp(760px, 210vw, 840px);
+  }
+
+  .letter-stage.is-open .sealed-copy {
+    order: 2;
+    aspect-ratio: auto;
+    min-height: 0;
+    justify-content: flex-start;
+    padding: 20px;
+  }
+
+  .letter-stage.is-open .sealed-card img {
+    order: 1;
+    aspect-ratio: auto;
+    height: 100%;
+    min-height: 0;
+  }
+
   .home-search-form,
   .home-actions {
     width: min(100%, 420px);
