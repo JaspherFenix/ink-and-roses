@@ -17,6 +17,13 @@ const referenceWindowBar = document.querySelector("#referenceWindowBar");
 const referenceImage = document.querySelector("#referenceImage");
 const closeReferenceButton = document.querySelector("#closeReference");
 const referenceResizeHandle = document.querySelector("#referenceResizeHandle");
+const referenceCropDialog = document.querySelector("#referenceCropDialog");
+const referenceCropViewport = document.querySelector("#referenceCropViewport");
+const referenceCropImage = document.querySelector("#referenceCropImage");
+const referenceCropZoom = document.querySelector("#referenceCropZoom");
+const cancelReferenceCropButton = document.querySelector("#cancelReferenceCrop");
+const discardReferenceCropButton = document.querySelector("#discardReferenceCrop");
+const applyReferenceCropButton = document.querySelector("#applyReferenceCrop");
 const canvas = document.querySelector("#loveSketch");
 const colorInput = document.querySelector("#inkColor");
 const brushInput = document.querySelector("#brushSize");
@@ -47,6 +54,10 @@ let confessions = [];
 let ctx = null;
 let referenceImageUrl = "";
 let referenceInteraction = null;
+let referenceCropSourceUrl = "";
+let referenceCropState = null;
+let referenceCropDrag = null;
+let restoreReferenceAfterCrop = false;
 
 function demoSketchData(seed, ink = "#541928") {
   const offset = seed * 7;
@@ -404,6 +415,8 @@ function clamp(value, minimum, maximum) {
 }
 
 function clearReferenceImage() {
+  closeReferenceCrop(false);
+
   if (referenceImageUrl) {
     URL.revokeObjectURL(referenceImageUrl);
     referenceImageUrl = "";
@@ -423,8 +436,8 @@ function clearReferenceImage() {
   }
 }
 
-function showReferenceImage(file) {
-  if (!referenceWindow || !referenceImage || !file?.type.startsWith("image/")) {
+function showReferenceImage(imageBlob) {
+  if (!referenceWindow || !referenceImage || !imageBlob?.type.startsWith("image/")) {
     return;
   }
 
@@ -432,9 +445,207 @@ function showReferenceImage(file) {
     URL.revokeObjectURL(referenceImageUrl);
   }
 
-  referenceImageUrl = URL.createObjectURL(file);
+  referenceImageUrl = URL.createObjectURL(imageBlob);
   referenceImage.src = referenceImageUrl;
   referenceWindow.hidden = false;
+}
+
+function releaseReferenceCropSource() {
+  if (referenceCropSourceUrl) {
+    URL.revokeObjectURL(referenceCropSourceUrl);
+    referenceCropSourceUrl = "";
+  }
+
+  if (referenceCropImage) {
+    referenceCropImage.removeAttribute("src");
+    referenceCropImage.removeAttribute("style");
+  }
+
+  referenceCropState = null;
+  referenceCropDrag = null;
+  referenceCropViewport?.classList.remove("is-dragging");
+}
+
+function closeReferenceCrop(restoreReference = true) {
+  releaseReferenceCropSource();
+
+  if (referenceCropDialog) {
+    referenceCropDialog.hidden = true;
+  }
+
+  document.body.classList.remove("is-cropping-reference");
+
+  if (referenceImageInput) {
+    referenceImageInput.value = "";
+  }
+
+  if (restoreReference && restoreReferenceAfterCrop && referenceWindow && referenceImageUrl) {
+    referenceWindow.hidden = false;
+  }
+
+  restoreReferenceAfterCrop = false;
+}
+
+function clampReferenceCropPosition() {
+  if (!referenceCropState || !referenceCropViewport) {
+    return;
+  }
+
+  const viewportWidth = referenceCropViewport.clientWidth;
+  const viewportHeight = referenceCropViewport.clientHeight;
+  const imageWidth = referenceCropState.naturalWidth * referenceCropState.scale;
+  const imageHeight = referenceCropState.naturalHeight * referenceCropState.scale;
+
+  referenceCropState.x = clamp(referenceCropState.x, viewportWidth - imageWidth, 0);
+  referenceCropState.y = clamp(referenceCropState.y, viewportHeight - imageHeight, 0);
+}
+
+function renderReferenceCrop() {
+  if (!referenceCropImage || !referenceCropState) {
+    return;
+  }
+
+  const imageWidth = referenceCropState.naturalWidth * referenceCropState.scale;
+  const imageHeight = referenceCropState.naturalHeight * referenceCropState.scale;
+  referenceCropImage.style.width = `${imageWidth}px`;
+  referenceCropImage.style.height = `${imageHeight}px`;
+  referenceCropImage.style.left = `${referenceCropState.x}px`;
+  referenceCropImage.style.top = `${referenceCropState.y}px`;
+}
+
+function initializeReferenceCrop() {
+  if (!referenceCropImage || !referenceCropViewport || !referenceCropImage.naturalWidth) {
+    return;
+  }
+
+  const viewportWidth = referenceCropViewport.clientWidth;
+  const viewportHeight = referenceCropViewport.clientHeight;
+  const naturalWidth = referenceCropImage.naturalWidth;
+  const naturalHeight = referenceCropImage.naturalHeight;
+  const minimumScale = Math.max(viewportWidth / naturalWidth, viewportHeight / naturalHeight);
+
+  referenceCropState = {
+    naturalWidth,
+    naturalHeight,
+    minimumScale,
+    scale: minimumScale,
+    x: (viewportWidth - naturalWidth * minimumScale) / 2,
+    y: (viewportHeight - naturalHeight * minimumScale) / 2,
+  };
+
+  if (referenceCropZoom) {
+    referenceCropZoom.value = "100";
+  }
+
+  renderReferenceCrop();
+}
+
+function openReferenceCrop(file) {
+  if (!referenceCropDialog || !referenceCropImage || !file?.type.startsWith("image/")) {
+    return;
+  }
+
+  releaseReferenceCropSource();
+  restoreReferenceAfterCrop = Boolean(referenceImageUrl && referenceWindow && !referenceWindow.hidden);
+
+  if (referenceWindow) {
+    referenceWindow.hidden = true;
+  }
+
+  referenceCropSourceUrl = URL.createObjectURL(file);
+  referenceCropDialog.hidden = false;
+  document.body.classList.add("is-cropping-reference");
+  referenceCropImage.src = referenceCropSourceUrl;
+}
+
+function updateReferenceCropZoom() {
+  if (!referenceCropState || !referenceCropViewport || !referenceCropZoom) {
+    return;
+  }
+
+  const previousScale = referenceCropState.scale;
+  const nextScale = referenceCropState.minimumScale * (Number(referenceCropZoom.value) / 100);
+  const viewportCenterX = referenceCropViewport.clientWidth / 2;
+  const viewportCenterY = referenceCropViewport.clientHeight / 2;
+  const sourceCenterX = (viewportCenterX - referenceCropState.x) / previousScale;
+  const sourceCenterY = (viewportCenterY - referenceCropState.y) / previousScale;
+
+  referenceCropState.scale = nextScale;
+  referenceCropState.x = viewportCenterX - sourceCenterX * nextScale;
+  referenceCropState.y = viewportCenterY - sourceCenterY * nextScale;
+  clampReferenceCropPosition();
+  renderReferenceCrop();
+}
+
+function startReferenceCropDrag(event) {
+  if (!referenceCropState || (event.pointerType === "mouse" && event.button !== 0)) {
+    return;
+  }
+
+  event.preventDefault();
+  referenceCropDrag = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    imageX: referenceCropState.x,
+    imageY: referenceCropState.y,
+  };
+  referenceCropViewport?.classList.add("is-dragging");
+}
+
+function moveReferenceCrop(event) {
+  if (!referenceCropDrag || !referenceCropState || event.pointerId !== referenceCropDrag.pointerId) {
+    return;
+  }
+
+  referenceCropState.x = referenceCropDrag.imageX + event.clientX - referenceCropDrag.startX;
+  referenceCropState.y = referenceCropDrag.imageY + event.clientY - referenceCropDrag.startY;
+  clampReferenceCropPosition();
+  renderReferenceCrop();
+}
+
+function endReferenceCropDrag(event) {
+  if (referenceCropDrag && event.pointerId === referenceCropDrag.pointerId) {
+    referenceCropDrag = null;
+    referenceCropViewport?.classList.remove("is-dragging");
+  }
+}
+
+async function applyReferenceCrop() {
+  if (!referenceCropImage || !referenceCropViewport || !referenceCropState) {
+    return;
+  }
+
+  const cropCanvas = document.createElement("canvas");
+  const cropContext = cropCanvas.getContext("2d");
+  const cropSize = referenceCropViewport.clientWidth;
+  const sourceX = clamp(-referenceCropState.x / referenceCropState.scale, 0, referenceCropState.naturalWidth);
+  const sourceY = clamp(-referenceCropState.y / referenceCropState.scale, 0, referenceCropState.naturalHeight);
+  const sourceSize = cropSize / referenceCropState.scale;
+
+  cropCanvas.width = 900;
+  cropCanvas.height = 900;
+  cropContext.drawImage(
+    referenceCropImage,
+    sourceX,
+    sourceY,
+    sourceSize,
+    sourceSize,
+    0,
+    0,
+    cropCanvas.width,
+    cropCanvas.height,
+  );
+
+  const croppedImage = await new Promise((resolve) => cropCanvas.toBlob(resolve, "image/jpeg", 0.92));
+
+  if (!croppedImage) {
+    return;
+  }
+
+  restoreReferenceAfterCrop = false;
+  closeReferenceCrop(false);
+  showReferenceImage(croppedImage);
 }
 
 function keepReferenceWindowOnScreen() {
@@ -900,18 +1111,43 @@ downloadConfessionButton?.addEventListener("click", downloadConfessionCard);
 chooseReferenceButton?.addEventListener("click", () => referenceImageInput?.click());
 referenceImageInput?.addEventListener("change", () => {
   const [file] = referenceImageInput.files;
-  showReferenceImage(file);
+  openReferenceCrop(file);
 });
 closeReferenceButton?.addEventListener("click", clearReferenceImage);
+referenceCropImage?.addEventListener("load", initializeReferenceCrop);
+referenceCropImage?.addEventListener("error", () => closeReferenceCrop());
+referenceCropZoom?.addEventListener("input", updateReferenceCropZoom);
+referenceCropViewport?.addEventListener("pointerdown", startReferenceCropDrag);
+cancelReferenceCropButton?.addEventListener("click", () => closeReferenceCrop());
+discardReferenceCropButton?.addEventListener("click", () => closeReferenceCrop());
+applyReferenceCropButton?.addEventListener("click", applyReferenceCrop);
 referenceWindowBar?.addEventListener("pointerdown", (event) => startReferenceInteraction(event, "drag"));
 referenceResizeHandle?.addEventListener("pointerdown", (event) => startReferenceInteraction(event, "resize"));
 window.addEventListener("pointermove", moveReferenceWindow);
+window.addEventListener("pointermove", moveReferenceCrop);
 window.addEventListener("pointerup", endReferenceInteraction);
+window.addEventListener("pointerup", endReferenceCropDrag);
 window.addEventListener("pointercancel", endReferenceInteraction);
-window.addEventListener("resize", keepReferenceWindowOnScreen);
+window.addEventListener("pointercancel", endReferenceCropDrag);
+window.addEventListener("resize", () => {
+  keepReferenceWindowOnScreen();
+
+  if (referenceCropDialog && !referenceCropDialog.hidden) {
+    initializeReferenceCrop();
+  }
+});
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && referenceCropDialog && !referenceCropDialog.hidden) {
+    closeReferenceCrop();
+  }
+});
 window.addEventListener("beforeunload", () => {
   if (referenceImageUrl) {
     URL.revokeObjectURL(referenceImageUrl);
+  }
+
+  if (referenceCropSourceUrl) {
+    URL.revokeObjectURL(referenceCropSourceUrl);
   }
 });
 messageInput?.addEventListener("input", updateMessageMetrics);

@@ -73,7 +73,7 @@
 
             <button class="button reference-button" type="button" id="chooseReference">
               <i data-lucide="image-plus"></i>
-              <span>Choose sketch reference</span>
+              <span>Choose and crop reference</span>
             </button>
             <input id="referenceImageInput" type="file" accept="image/*" hidden />
 
@@ -141,6 +141,32 @@
         <i data-lucide="move-diagonal-2"></i>
       </button>
     </aside>
+
+    <div class="reference-crop-dialog" id="referenceCropDialog" role="dialog" aria-modal="true" aria-labelledby="referenceCropTitle" hidden>
+      <section class="reference-crop-panel">
+        <header class="reference-crop-header">
+          <h2 id="referenceCropTitle">Crop reference</h2>
+          <button class="reference-crop-close" type="button" id="cancelReferenceCrop" aria-label="Cancel cropping">
+            <i data-lucide="x"></i>
+          </button>
+        </header>
+        <div class="reference-crop-viewport" id="referenceCropViewport">
+          <img id="referenceCropImage" alt="Reference image being cropped" />
+          <div class="reference-crop-guide" aria-hidden="true"></div>
+        </div>
+        <label class="reference-crop-zoom">
+          <span>Zoom</span>
+          <input id="referenceCropZoom" type="range" min="100" max="300" value="100" />
+        </label>
+        <div class="reference-crop-actions">
+          <button class="button" type="button" id="discardReferenceCrop">Cancel</button>
+          <button class="button primary" type="button" id="applyReferenceCrop">
+            <i data-lucide="crop"></i>
+            <span>Crop image</span>
+          </button>
+        </div>
+      </section>
+    </div>
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="script.js"></script>
