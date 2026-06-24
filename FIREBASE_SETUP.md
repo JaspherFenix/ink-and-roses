@@ -3,7 +3,7 @@
 1. Create a Firebase project and register a Web app.
 2. Create a Cloud Firestore database.
 3. Enable Anonymous authentication in Firebase Authentication.
-4. Copy the Web app configuration into `firebase-config.js`.
+4. The Web app configuration is already stored in `firebase-config.js`.
 5. Deploy `firestore.rules` from the Firebase console or with:
 
 ```bash

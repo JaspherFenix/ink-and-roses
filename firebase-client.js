@@ -21,14 +21,15 @@ async function getFirebaseServices(config) {
       import(firebaseFirestoreUrl),
     ]).then(([appSdk, authSdk, firestoreSdk]) => {
       const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(config);
-
-      return {
+      const services = {
         app,
         auth: authSdk.getAuth(app),
         db: firestoreSdk.getFirestore(app),
         authSdk,
         firestoreSdk,
       };
+
+      return services;
     });
   }
 
