@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500;1,600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260624-2" />
   </head>
   <body class="home-page">
     <div class="petal-field" aria-hidden="true"></div>
@@ -63,7 +63,7 @@
               <i data-lucide="feather"></i>
               <span>Send a message</span>
             </button>
-            <button class="button archive-action-button" type="button" data-scroll-target="archive" aria-label="Go to archive">
+            <button class="button archive-action-button" type="button" data-scroll-target="archive" aria-label="Go to archive" hidden aria-hidden="true">
               <i data-lucide="archive"></i>
               <span>Archive</span>
             </button>
@@ -122,11 +122,11 @@
               </button>
               <input id="referenceImageInput" type="file" accept="image/*" hidden />
 
-              <button class="button primary send-button" type="submit">
+              <button class="button primary send-button desktop-submit" type="submit">
                 <i data-lucide="send"></i>
                 <span>Send confession</span>
               </button>
-              <p class="form-response" role="status" aria-live="polite"></p>
+              <p class="form-response desktop-submit-response" role="status" aria-live="polite"></p>
             </form>
 
             <section class="sketch-panel" id="sketch" aria-labelledby="sketchTitle">
@@ -170,11 +170,19 @@
                 ></canvas>
               </div>
             </section>
+
+            <div class="mobile-submit-wrap">
+              <button class="button primary send-button" type="submit" form="confessionForm">
+                <i data-lucide="send"></i>
+                <span>Send confession</span>
+              </button>
+              <p class="form-response" role="status" aria-live="polite"></p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="home-content-section archive-section" id="archive" aria-labelledby="archiveTitle">
+      <section class="home-content-section archive-section" id="archive" aria-labelledby="archiveTitle" hidden aria-hidden="true">
         <div class="page-shell">
           <div class="page-heading">
             <p class="eyebrow dark">The paper archive</p>
@@ -188,6 +196,22 @@
         </div>
       </section>
     </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <a class="footer-brand" href="#home" aria-label="Ink and Roses home">
+          <img src="assets/favicon.png" alt="" />
+          <span>Ink and Roses</span>
+        </a>
+        <p class="footer-line">Letters fade. Ink remembers.</p>
+        <div class="footer-end">
+          <span>&copy; 2026 Ink and Roses</span>
+          <a class="footer-top" href="#home" aria-label="Back to top">
+            <i data-lucide="arrow-up"></i>
+          </a>
+        </div>
+      </div>
+    </footer>
 
     <aside class="reference-window" id="referenceWindow" aria-label="Sketch reference" hidden>
       <div class="reference-window-bar" id="referenceWindowBar">
@@ -229,7 +253,7 @@
     </div>
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="firebase-config.js"></script>
-    <script type="module" src="script.js"></script>
+    <script src="firebase-config.js?v=20260624-2"></script>
+    <script type="module" src="script.js?v=20260624-2"></script>
   </body>
 </html>

@@ -5,19 +5,18 @@ service cloud.firestore {
     match /confessions/{confessionId} {
       allow read: if true;
 
-      allow create: if request.auth != null
-        && request.resource.data.keys().hasOnly([
+      allow create: if request.resource.data.keys().hasOnly([
           'id',
           'recipient',
           'message',
           'sketch',
           'sealedAt',
           'demo',
-          'authorId',
           'createdAt'
         ])
         && request.resource.data.id == confessionId
-        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.id is string
+        && request.resource.data.id.size() <= 100
         && request.resource.data.recipient is string
         && request.resource.data.recipient.size() > 0
         && request.resource.data.recipient.size() <= 120
@@ -25,6 +24,7 @@ service cloud.firestore {
         && request.resource.data.message.size() > 0
         && request.resource.data.message.size() <= 5000
         && request.resource.data.sealedAt is string
+        && request.resource.data.sealedAt.size() <= 40
         && request.resource.data.demo == false
         && request.resource.data.createdAt is timestamp
         && request.resource.data.sketch is map
@@ -36,6 +36,7 @@ service cloud.firestore {
         ])
         && request.resource.data.sketch.version == 1
         && request.resource.data.sketch.strokes is list
+        && request.resource.data.sketch.strokes.size() == request.resource.data.sketch.strokeCount
         && request.resource.data.sketch.strokeCount is int
         && request.resource.data.sketch.strokeCount >= 0
         && request.resource.data.sketch.strokeCount <= 240

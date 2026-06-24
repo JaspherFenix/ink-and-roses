@@ -2,7 +2,7 @@ import {
   hasFirebaseConfig,
   loadFirebaseConfessions,
   saveFirebaseConfession,
-} from "./firebase-client.js";
+} from "./firebase-client.js?v=20260624-2";
 
 const petalField = document.querySelector(".petal-field");
 const searchInput = document.querySelector("#searchName");
@@ -14,7 +14,7 @@ const recipientInput = document.querySelector("#recipientName");
 const messageInput = document.querySelector("#confessionMessage");
 const wordCount = document.querySelector("#wordCount");
 const inkMood = document.querySelector("#inkMood");
-const formResponse = document.querySelector(".form-response");
+const formResponses = document.querySelectorAll(".form-response");
 const detailResponse = document.querySelector(".detail-response");
 const chooseReferenceButton = document.querySelector("#chooseReference");
 const referenceImageInput = document.querySelector("#referenceImageInput");
@@ -45,11 +45,13 @@ const sealedMessage = document.querySelector(".sealed-message");
 const sealedSketch = document.querySelector("#sealedSketch");
 const letterStage = document.querySelector("#letterStage");
 const letterSealName = document.querySelector("#letterSealName");
-const confessionStorageKey = "inkAndRosesConfessions";
-const previousConfessionStorageKey = "roseboundLettersConfessions";
-const legacyArchiveStorageKey = ["face", "less", "Dream", "Confessions"].join("");
-const legacyConfessionStorageKey = ["face", "less", "Dream", "LastConfession"].join("");
-const nonDemoCleanupStorageKey = "roseboundLettersNonDemoCleanupV1";
+const retiredConfessionStorageKeys = [
+  "inkAndRosesConfessions",
+  "roseboundLettersConfessions",
+  ["face", "less", "Dream", "Confessions"].join(""),
+  ["face", "less", "Dream", "LastConfession"].join(""),
+  "roseboundLettersNonDemoCleanupV1",
+];
 const homeArtworkPath = ["assets", `${["medieval", "dream", "garden"].join("-")}.png`].join("/");
 const firebaseConfig = window.INK_AND_ROSES_FIREBASE_CONFIG || {};
 const maximumSketchStrokes = 240;
@@ -73,24 +75,6 @@ let referenceCropState = null;
 let referenceCropDrag = null;
 let restoreReferenceAfterCrop = false;
 
-function demoSketchData(seed, ink = "#541928") {
-  const offset = seed * 7;
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520">
-      <rect width="420" height="520" fill="#fffaf0"/>
-      <path d="M120 ${154 + offset} C146 72 274 72 300 ${154 + offset} C324 230 302 346 210 390 C118 346 96 230 120 ${154 + offset}Z" fill="none" stroke="${ink}" stroke-width="10" stroke-linecap="round"/>
-      <path d="M132 180 C150 142 184 122 210 124 C250 126 282 152 294 190" fill="none" stroke="#253d2d" stroke-width="8" stroke-linecap="round"/>
-      <path d="M160 254 C178 242 194 242 210 256 C226 242 244 242 262 254" fill="none" stroke="${ink}" stroke-width="8" stroke-linecap="round"/>
-      <path d="M166 320 C190 342 232 342 258 320" fill="none" stroke="${ink}" stroke-width="7" stroke-linecap="round"/>
-      <path d="M104 416 C142 392 176 398 210 430 C246 398 280 392 316 416" fill="none" stroke="#8c6b2a" stroke-width="8" stroke-linecap="round"/>
-      <circle cx="${138 + offset}" cy="96" r="16" fill="#8f2f47" opacity=".35"/>
-      <circle cx="${296 - offset}" cy="446" r="18" fill="#8f2f47" opacity=".32"/>
-    </svg>
-  `;
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
-
 function blankSketchData() {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520">
@@ -102,73 +86,6 @@ function blankSketchData() {
 
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
-
-const demoConfessions = [
-  {
-    id: "demo-elena",
-    recipient: "Elena",
-    message: "I pass your name like a candle from one quiet thought to another. If I ever seem brave, it is because your smile taught my heart to stand still.",
-    sketch: demoSketchData(1),
-    sealedAt: "2026-06-23T19:20:00.000Z",
-    demo: true,
-  },
-  {
-    id: "demo-mira",
-    recipient: "Mira",
-    message: "There are halls in me that were only stone until you laughed. Now even the shadows know where to place their flowers.",
-    sketch: demoSketchData(2, "#253d2d"),
-    sealedAt: "2026-06-23T18:10:00.000Z",
-    demo: true,
-  },
-  {
-    id: "demo-aurora",
-    recipient: "Aurora",
-    message: "Your name sounds like morning entering a castle window. I keep it carefully, as if one careless word could wake the whole kingdom.",
-    sketch: demoSketchData(3),
-    sealedAt: "2026-06-23T17:45:00.000Z",
-    demo: true,
-  },
-  {
-    id: "demo-luna",
-    recipient: "Luna",
-    message: "If the moon ever asks why I look up so often, I will tell it the truth: I am searching for the same light I found in you.",
-    sketch: demoSketchData(4, "#8c6b2a"),
-    sealedAt: "2026-06-23T16:05:00.000Z",
-    demo: true,
-  },
-  {
-    id: "demo-seraphina",
-    recipient: "Seraphina",
-    message: "I have written your name only in my mind, but every rose in this garden has learned it from the way I become quiet.",
-    sketch: demoSketchData(5),
-    sealedAt: "2026-06-23T14:50:00.000Z",
-    demo: true,
-  },
-  {
-    id: "demo-celeste",
-    recipient: "Celeste",
-    message: "You are the soft thunder before rain, the small golden fear before confession, the reason my silence keeps turning into poetry.",
-    sketch: demoSketchData(6, "#253d2d"),
-    sealedAt: "2026-06-23T13:35:00.000Z",
-    demo: true,
-  },
-  {
-    id: "demo-isabelle",
-    recipient: "Isabelle",
-    message: "If courage were a letter, this would be mine: I like you more gently than a song, and more honestly than I know how to hide.",
-    sketch: demoSketchData(7),
-    sealedAt: "2026-06-23T12:15:00.000Z",
-    demo: true,
-  },
-  {
-    id: "demo-rosalie",
-    recipient: "Rosalie",
-    message: "Every rose here is only pretending to be a flower. I know the truth. They are all small red witnesses to how much I think of you.",
-    sketch: demoSketchData(8, "#8f2f47"),
-    sealedAt: "2026-06-23T11:00:00.000Z",
-    demo: true,
-  },
-];
 
 function createPetal() {
   if (!petalField || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -288,79 +205,20 @@ function sortByNewest(items) {
   return [...items].sort((a, b) => new Date(b.sealedAt) - new Date(a.sealedAt));
 }
 
-function saveConfessions() {
+function clearRetiredConfessionStorage() {
   try {
-    const storedConfessions = confessions.map((confession) => ({
-      id: confession.id,
-      recipient: confession.recipient,
-      message: confession.message,
-      sketch: confession.sketchData || confession.legacySketch,
-      sealedAt: confession.sealedAt,
-      demo: confession.demo,
-    }));
-
-    window.localStorage.setItem(confessionStorageKey, JSON.stringify(storedConfessions));
+    retiredConfessionStorageKeys.forEach((key) => window.localStorage.removeItem(key));
   } catch (error) {
-    console.warn("Ink and Roses could not keep these confessions.", error);
+    console.warn("Ink and Roses could not clear retired browser data.", error);
   }
 }
 
-function clearSavedNonDemoConfessionsOnce() {
-  try {
-    if (window.localStorage.getItem(nonDemoCleanupStorageKey)) {
-      return;
-    }
-
-    window.localStorage.removeItem(previousConfessionStorageKey);
-    window.localStorage.removeItem(legacyArchiveStorageKey);
-    window.localStorage.removeItem(legacyConfessionStorageKey);
-    window.localStorage.setItem(nonDemoCleanupStorageKey, "true");
-  } catch (error) {
-    console.warn("Ink and Roses could not clear older saved confessions.", error);
-  }
-}
-
-function loadConfessions() {
-  try {
-    clearSavedNonDemoConfessionsOnce();
-
-    const savedArchive = JSON.parse(window.localStorage.getItem(confessionStorageKey) || "[]");
-    const previousSavedArchive = JSON.parse(window.localStorage.getItem(previousConfessionStorageKey) || "[]");
-    const savedLegacyArchive = JSON.parse(window.localStorage.getItem(legacyArchiveStorageKey) || "[]");
-    const savedLegacy = JSON.parse(window.localStorage.getItem(legacyConfessionStorageKey) || "null");
-    const archiveItems = Array.isArray(savedArchive) ? savedArchive : [];
-    const previousArchiveItems = Array.isArray(previousSavedArchive) ? previousSavedArchive : [];
-    const legacyArchiveItems = Array.isArray(savedLegacyArchive) ? savedLegacyArchive : [];
-    const mergedItems = savedLegacy
-      ? [savedLegacy, ...archiveItems, ...previousArchiveItems, ...legacyArchiveItems, ...demoConfessions]
-      : [...archiveItems, ...previousArchiveItems, ...legacyArchiveItems, ...demoConfessions];
-    const byId = new Map();
-
-    mergedItems.map(normalizeConfession).forEach((confession) => {
-      if (confession.message) {
-        byId.set(confession.id, confession);
-      }
-    });
-
-    confessions = sortByNewest([...byId.values()]);
-    saveConfessions();
-  } catch (error) {
-    console.warn("The letter registry could not be opened.", error);
-    confessions = sortByNewest(demoConfessions.map(normalizeConfession));
-  }
-}
-
-function mergeConfessions(items) {
-  const byId = new Map(confessions.map((confession) => [confession.id, confession]));
-
-  items.map(normalizeConfession).forEach((confession) => {
-    if (confession.message) {
-      byId.set(confession.id, confession);
-    }
-  });
-
-  confessions = sortByNewest([...byId.values()]);
-  saveConfessions();
+function replaceConfessions(items) {
+  confessions = sortByNewest(
+    items
+      .map(normalizeConfession)
+      .filter((confession) => confession.message),
+  );
 }
 
 function formatDate(value) {
@@ -448,7 +306,7 @@ function renderSearchResults(matches, query) {
     date.className = "result-date";
 
     name.textContent = confession.recipient;
-    preview.textContent = confession.demo ? "Demo sealed paper" : "Sealed paper";
+    preview.textContent = "Sealed paper";
     date.textContent = formatDate(confession.sealedAt);
 
     link.append(name, preview, date);
@@ -490,7 +348,7 @@ function renderArchive() {
     date.className = "result-date";
 
     name.textContent = confession.recipient;
-    preview.textContent = confession.demo ? "Demo paper letter" : "Anonymous paper letter";
+    preview.textContent = "Anonymous paper letter";
     date.textContent = formatDate(confession.sealedAt);
 
     paper.appendChild(icon);
@@ -505,9 +363,9 @@ function renderArchive() {
 }
 
 function setStatus(text) {
-  if (formResponse) {
-    formResponse.textContent = text;
-  }
+  formResponses.forEach((response) => {
+    response.textContent = text;
+  });
 
   if (detailResponse) {
     detailResponse.textContent = text;
@@ -1246,15 +1104,7 @@ async function sealConfession(event) {
     demo: false,
   });
 
-  confessions = sortByNewest([confession, ...confessions]);
-  saveConfessions();
-  renderArchive();
-  confessionForm.reset();
-  clearReferenceImage();
-  resetSketch();
-  updateMessageMetrics();
   setStatus("Saving your confession...");
-  scrollToPageSection("archive");
 
   try {
     const savedRemotely = await saveFirebaseConfession(firebaseConfig, {
@@ -1266,14 +1116,21 @@ async function sealConfession(event) {
       demo: false,
     });
 
-    setStatus(
-      savedRemotely
-        ? "Your anonymous confession has been saved to the shared archive."
-        : "Your confession was saved on this browser. Add Firebase configuration to share it.",
-    );
+    if (!savedRemotely) {
+      setStatus("Firebase is not configured, so the confession was not saved.");
+      return;
+    }
+
+    confessions = sortByNewest([confession, ...confessions]);
+    renderCurrentViews();
+    confessionForm.reset();
+    clearReferenceImage();
+    resetSketch();
+    updateMessageMetrics();
+    setStatus("Your anonymous confession has been saved.");
   } catch (error) {
     console.warn("Ink and Roses could not save this confession to Firebase.", error);
-    setStatus("Your confession was saved on this browser, but Firebase could not be reached.");
+    setStatus("Firebase could not save this confession. Please try again.");
   }
 }
 
@@ -1373,19 +1230,20 @@ function renderCurrentViews() {
 }
 
 async function initializeRegistry() {
-  loadConfessions();
+  clearRetiredConfessionStorage();
+  confessions = [];
   renderCurrentViews();
 
   if (!hasFirebaseConfig(firebaseConfig)) {
-    document.documentElement.dataset.firebase = "local";
-    console.info("Ink and Roses is using local storage until firebase-config.js is completed.");
+    document.documentElement.dataset.firebase = "unconfigured";
+    console.warn("Ink and Roses needs Firebase configuration before confessions can be loaded or saved.");
     return;
   }
 
   try {
     document.documentElement.dataset.firebase = "connecting";
     const remoteConfessions = await loadFirebaseConfessions(firebaseConfig);
-    mergeConfessions(remoteConfessions);
+    replaceConfessions(remoteConfessions);
     renderCurrentViews();
     document.documentElement.dataset.firebase = "connected";
   } catch (error) {
