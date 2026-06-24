@@ -1,3 +1,9 @@
+import {
+  hasFirebaseConfig,
+  loadFirebaseConfessions,
+  saveFirebaseConfession,
+} from "./firebase-client.js";
+
 const petalField = document.querySelector(".petal-field");
 const searchInput = document.querySelector("#searchName");
 const searchResults = document.querySelector("#searchResults");
@@ -39,16 +45,24 @@ const sealedMessage = document.querySelector(".sealed-message");
 const sealedSketch = document.querySelector("#sealedSketch");
 const letterStage = document.querySelector("#letterStage");
 const letterSealName = document.querySelector("#letterSealName");
-const confessionStorageKey = "roseboundLettersConfessions";
+const confessionStorageKey = "inkAndRosesConfessions";
+const previousConfessionStorageKey = "roseboundLettersConfessions";
 const legacyArchiveStorageKey = ["face", "less", "Dream", "Confessions"].join("");
 const legacyConfessionStorageKey = ["face", "less", "Dream", "LastConfession"].join("");
 const nonDemoCleanupStorageKey = "roseboundLettersNonDemoCleanupV1";
 const homeArtworkPath = ["assets", `${["medieval", "dream", "garden"].join("-")}.png`].join("/");
+const firebaseConfig = window.INK_AND_ROSES_FIREBASE_CONFIG || {};
+const maximumSketchStrokes = 240;
+const maximumSketchPoints = 12000;
+const maximumPointsPerStroke = 1600;
+const minimumPointDistance = 0.0015;
 
 let activeTool = "pen";
 let isDrawing = false;
 let lastPoint = null;
-let sketchHistory = [];
+let sketchStrokes = [];
+let currentStroke = null;
+let sketchPointCount = 0;
 let latestConfession = null;
 let confessions = [];
 let ctx = null;
@@ -190,15 +204,81 @@ function makeId() {
   return `confession-${Date.now()}-${Math.round(Math.random() * 100000)}`;
 }
 
+function roundSketchValue(value) {
+  return Math.round(value * 100000) / 100000;
+}
+
+function normalizeSketchPoint(point) {
+  return {
+    x: roundSketchValue(clamp(Number(point?.x) || 0, 0, 1)),
+    y: roundSketchValue(clamp(Number(point?.y) || 0, 0, 1)),
+  };
+}
+
+function normalizeSketchStroke(stroke) {
+  const tool = stroke?.tool === "eraser" ? "eraser" : "pen";
+  const color = /^#[0-9a-f]{6}$/i.test(String(stroke?.color || ""))
+    ? String(stroke.color).toLowerCase()
+    : "#541928";
+  const size = roundSketchValue(clamp(Number(stroke?.size) || 0.008, 0.001, 0.12));
+  const points = Array.isArray(stroke?.points)
+    ? stroke.points.slice(0, maximumPointsPerStroke).map(normalizeSketchPoint)
+    : [];
+
+  return { tool, color, size, points };
+}
+
+function normalizeSketchData(sketch) {
+  if (!sketch || typeof sketch !== "object" || !Array.isArray(sketch.strokes)) {
+    return null;
+  }
+
+  const strokes = [];
+  let pointCount = 0;
+
+  for (const savedStroke of sketch.strokes.slice(0, maximumSketchStrokes)) {
+    const stroke = normalizeSketchStroke(savedStroke);
+
+    if (stroke.points.length === 0 || pointCount + stroke.points.length > maximumSketchPoints) {
+      continue;
+    }
+
+    strokes.push(stroke);
+    pointCount += stroke.points.length;
+  }
+
+  return {
+    version: 1,
+    strokes,
+    strokeCount: strokes.length,
+    pointCount,
+  };
+}
+
+function createSketchData(strokes = sketchStrokes) {
+  const normalized = normalizeSketchData({ version: 1, strokes });
+
+  return normalized || {
+    version: 1,
+    strokes: [],
+    strokeCount: 0,
+    pointCount: 0,
+  };
+}
+
 function normalizeConfession(confession) {
-  const savedSketch = String(confession.sketch || "");
-  const sketch = savedSketch === homeArtworkPath ? "" : savedSketch;
+  const savedSketch = typeof confession.sketch === "string" ? confession.sketch : "";
+  const legacySketch = savedSketch === homeArtworkPath ? "" : savedSketch;
+  const sketchData = normalizeSketchData(
+    confession.sketchData || (confession.sketch && typeof confession.sketch === "object" ? confession.sketch : null),
+  );
 
   return {
     id: confession.id || makeId(),
     recipient: String(confession.recipient || "The moonlit dream").trim(),
     message: String(confession.message || "").trim(),
-    sketch: sketch || blankSketchData(),
+    sketchData,
+    legacySketch: legacySketch || (sketchData ? "" : blankSketchData()),
     sealedAt: confession.sealedAt || new Date().toISOString(),
     demo: Boolean(confession.demo),
   };
@@ -210,7 +290,16 @@ function sortByNewest(items) {
 
 function saveConfessions() {
   try {
-    window.localStorage.setItem(confessionStorageKey, JSON.stringify(confessions));
+    const storedConfessions = confessions.map((confession) => ({
+      id: confession.id,
+      recipient: confession.recipient,
+      message: confession.message,
+      sketch: confession.sketchData || confession.legacySketch,
+      sealedAt: confession.sealedAt,
+      demo: confession.demo,
+    }));
+
+    window.localStorage.setItem(confessionStorageKey, JSON.stringify(storedConfessions));
   } catch (error) {
     console.warn("Ink and Roses could not keep these confessions.", error);
   }
@@ -222,7 +311,7 @@ function clearSavedNonDemoConfessionsOnce() {
       return;
     }
 
-    window.localStorage.removeItem(confessionStorageKey);
+    window.localStorage.removeItem(previousConfessionStorageKey);
     window.localStorage.removeItem(legacyArchiveStorageKey);
     window.localStorage.removeItem(legacyConfessionStorageKey);
     window.localStorage.setItem(nonDemoCleanupStorageKey, "true");
@@ -236,13 +325,15 @@ function loadConfessions() {
     clearSavedNonDemoConfessionsOnce();
 
     const savedArchive = JSON.parse(window.localStorage.getItem(confessionStorageKey) || "[]");
+    const previousSavedArchive = JSON.parse(window.localStorage.getItem(previousConfessionStorageKey) || "[]");
     const savedLegacyArchive = JSON.parse(window.localStorage.getItem(legacyArchiveStorageKey) || "[]");
     const savedLegacy = JSON.parse(window.localStorage.getItem(legacyConfessionStorageKey) || "null");
     const archiveItems = Array.isArray(savedArchive) ? savedArchive : [];
+    const previousArchiveItems = Array.isArray(previousSavedArchive) ? previousSavedArchive : [];
     const legacyArchiveItems = Array.isArray(savedLegacyArchive) ? savedLegacyArchive : [];
     const mergedItems = savedLegacy
-      ? [savedLegacy, ...archiveItems, ...legacyArchiveItems, ...demoConfessions]
-      : [...archiveItems, ...legacyArchiveItems, ...demoConfessions];
+      ? [savedLegacy, ...archiveItems, ...previousArchiveItems, ...legacyArchiveItems, ...demoConfessions]
+      : [...archiveItems, ...previousArchiveItems, ...legacyArchiveItems, ...demoConfessions];
     const byId = new Map();
 
     mergedItems.map(normalizeConfession).forEach((confession) => {
@@ -257,6 +348,19 @@ function loadConfessions() {
     console.warn("The letter registry could not be opened.", error);
     confessions = sortByNewest(demoConfessions.map(normalizeConfession));
   }
+}
+
+function mergeConfessions(items) {
+  const byId = new Map(confessions.map((confession) => [confession.id, confession]));
+
+  items.map(normalizeConfession).forEach((confession) => {
+    if (confession.message) {
+      byId.set(confession.id, confession);
+    }
+  });
+
+  confessions = sortByNewest([...byId.values()]);
+  saveConfessions();
 }
 
 function formatDate(value) {
@@ -743,7 +847,7 @@ function renderSelectedLetter(confession) {
   latestConfession = confession;
   sealedTo.textContent = `To ${confession.recipient}`;
   sealedMessage.textContent = confession.message;
-  sealedSketch.src = confession.sketch;
+  sealedSketch.src = getConfessionSketchImage(confession);
   sealedSketch.alt = `Sketch attached to the confession for ${confession.recipient}.`;
 
   if (letterSealName) {
@@ -780,80 +884,136 @@ function initConfessionPage() {
   }
 }
 
-function fillSketchPaper() {
+function fillSketchPaper(targetContext = ctx, targetCanvas = canvas) {
+  if (!targetContext || !targetCanvas) {
+    return;
+  }
+
+  targetContext.save();
+  targetContext.globalCompositeOperation = "source-over";
+  targetContext.fillStyle = "#ffffff";
+  targetContext.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
+  targetContext.restore();
+}
+
+function drawStrokeSegment(targetContext, targetCanvas, stroke, from, to) {
+  if (!targetContext || !targetCanvas || !stroke) {
+    return;
+  }
+
+  const canvasScale = Math.min(targetCanvas.width, targetCanvas.height);
+  const fromX = from.x * targetCanvas.width;
+  const fromY = from.y * targetCanvas.height;
+  const toX = to.x * targetCanvas.width;
+  const toY = to.y * targetCanvas.height;
+
+  targetContext.save();
+  targetContext.globalCompositeOperation = "source-over";
+  targetContext.lineCap = "round";
+  targetContext.lineJoin = "round";
+  targetContext.lineWidth = Math.max(1, stroke.size * canvasScale);
+  targetContext.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : stroke.color;
+  targetContext.fillStyle = targetContext.strokeStyle;
+
+  if (fromX === toX && fromY === toY) {
+    targetContext.beginPath();
+    targetContext.arc(fromX, fromY, targetContext.lineWidth / 2, 0, Math.PI * 2);
+    targetContext.fill();
+  } else {
+    targetContext.beginPath();
+    targetContext.moveTo(fromX, fromY);
+    targetContext.lineTo(toX, toY);
+    targetContext.stroke();
+  }
+
+  targetContext.restore();
+}
+
+function renderSketchData(targetContext, targetCanvas, sketchData) {
+  fillSketchPaper(targetContext, targetCanvas);
+
+  if (!sketchData) {
+    return;
+  }
+
+  sketchData.strokes.forEach((stroke) => {
+    if (stroke.points.length === 1) {
+      drawStrokeSegment(targetContext, targetCanvas, stroke, stroke.points[0], stroke.points[0]);
+      return;
+    }
+
+    for (let index = 1; index < stroke.points.length; index += 1) {
+      drawStrokeSegment(targetContext, targetCanvas, stroke, stroke.points[index - 1], stroke.points[index]);
+    }
+  });
+}
+
+function renderCurrentSketch() {
   if (!ctx || !canvas) {
     return;
   }
 
-  ctx.save();
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.restore();
+  renderSketchData(ctx, canvas, createSketchData());
+}
+
+function sketchDataToDataUrl(sketchData, size = 900) {
+  const previewCanvas = document.createElement("canvas");
+  const previewContext = previewCanvas.getContext("2d");
+  previewCanvas.width = size;
+  previewCanvas.height = size;
+  renderSketchData(previewContext, previewCanvas, sketchData);
+  return previewCanvas.toDataURL("image/png");
+}
+
+function getConfessionSketchImage(confession) {
+  if (confession?.sketchData) {
+    return sketchDataToDataUrl(confession.sketchData);
+  }
+
+  return confession?.legacySketch || blankSketchData();
 }
 
 function resetSketch() {
-  sketchHistory = [];
-  fillSketchPaper();
-  saveSketchState();
-}
-
-function saveSketchState() {
-  if (!ctx || !canvas) {
-    return;
-  }
-
-  if (sketchHistory.length > 18) {
-    sketchHistory.shift();
-  }
-
-  sketchHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  sketchStrokes = [];
+  currentStroke = null;
+  sketchPointCount = 0;
+  renderCurrentSketch();
 }
 
 function restoreSketchState() {
-  if (!ctx || !canvas || sketchHistory.length === 0) {
+  if (sketchStrokes.length === 0) {
     return;
   }
 
-  const previousState = sketchHistory.pop();
-  ctx.putImageData(previousState, 0, 0);
+  const removedStroke = sketchStrokes.pop();
+  sketchPointCount = Math.max(0, sketchPointCount - removedStroke.points.length);
+  currentStroke = null;
+  renderCurrentSketch();
 }
 
 function getCanvasPoint(event) {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
 
-  return {
-    x: (event.clientX - rect.left) * scaleX,
-    y: (event.clientY - rect.top) * scaleY,
-  };
+  return normalizeSketchPoint({
+    x: (event.clientX - rect.left) / rect.width,
+    y: (event.clientY - rect.top) / rect.height,
+  });
 }
 
-function drawLine(from, to) {
-  if (!ctx) {
-    return;
-  }
+function pointDistance(from, to) {
+  return Math.hypot(to.x - from.x, to.y - from.y);
+}
 
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = Number(brushInput?.value || 7);
+function createCurrentStroke(point) {
+  const brushPixels = Number(brushInput?.value || 7);
+  const normalizedSize = brushPixels / Math.min(canvas.width, canvas.height);
 
-  if (activeTool === "eraser") {
-    ctx.globalCompositeOperation = "source-over";
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = Number(brushInput?.value || 7) * 2.2;
-  } else {
-    ctx.globalCompositeOperation = "source-over";
-    ctx.strokeStyle = colorInput?.value || "#541928";
-  }
-
-  ctx.beginPath();
-  ctx.moveTo(from.x, from.y);
-  ctx.lineTo(to.x, to.y);
-  ctx.stroke();
-  ctx.restore();
+  return {
+    tool: activeTool,
+    color: colorInput?.value || "#541928",
+    size: roundSketchValue(activeTool === "eraser" ? normalizedSize * 2.2 : normalizedSize),
+    points: [point],
+  };
 }
 
 function activeToolDraws() {
@@ -861,26 +1021,44 @@ function activeToolDraws() {
 }
 
 function startSketch(event) {
-  if (!canvas || !activeToolDraws()) {
+  if (!canvas || !activeToolDraws() || sketchStrokes.length >= maximumSketchStrokes) {
     return;
   }
 
   event.preventDefault();
   canvas.setPointerCapture(event.pointerId);
-  saveSketchState();
   isDrawing = true;
   lastPoint = getCanvasPoint(event);
-  drawLine(lastPoint, lastPoint);
+  currentStroke = createCurrentStroke(lastPoint);
+  sketchStrokes.push(currentStroke);
+  sketchPointCount += 1;
+  drawStrokeSegment(ctx, canvas, currentStroke, lastPoint, lastPoint);
 }
 
 function moveSketch(event) {
-  if (!isDrawing || !lastPoint) {
+  if (!isDrawing || !lastPoint || !currentStroke) {
     return;
   }
 
   event.preventDefault();
   const nextPoint = getCanvasPoint(event);
-  drawLine(lastPoint, nextPoint);
+
+  if (pointDistance(lastPoint, nextPoint) < minimumPointDistance) {
+    return;
+  }
+
+  if (
+    currentStroke.points.length >= maximumPointsPerStroke
+    || sketchPointCount >= maximumSketchPoints
+  ) {
+    endSketch(event);
+    setStatus("The sketch reached its point limit. Undo or clear strokes to continue.");
+    return;
+  }
+
+  currentStroke.points.push(nextPoint);
+  sketchPointCount += 1;
+  drawStrokeSegment(ctx, canvas, currentStroke, lastPoint, nextPoint);
   lastPoint = nextPoint;
 }
 
@@ -891,6 +1069,7 @@ function endSketch(event) {
 
   isDrawing = false;
   lastPoint = null;
+  currentStroke = null;
 
   if (canvas.hasPointerCapture(event.pointerId)) {
     canvas.releasePointerCapture(event.pointerId);
@@ -917,7 +1096,7 @@ function downloadSketch() {
   }
 
   const link = document.createElement("a");
-  link.download = "rosebound-letter-sketch.png";
+  link.download = "ink-and-roses-sketch.png";
   link.href = canvas.toDataURL("image/png");
   link.click();
 }
@@ -1034,16 +1213,16 @@ function downloadConfessionCard() {
     cardContext.strokeRect(790, 168, 300, 300);
 
     const link = document.createElement("a");
-    link.download = "rosebound-letter-confession.png";
+    link.download = "ink-and-roses-confession.png";
     link.href = cardCanvas.toDataURL("image/png");
     link.click();
     setStatus("The confession card has been downloaded.");
   });
 
-  sketchImage.src = latestConfession.sketch;
+  sketchImage.src = getConfessionSketchImage(latestConfession);
 }
 
-function sealConfession(event) {
+async function sealConfession(event) {
   event.preventDefault();
 
   if (!recipientInput || !messageInput || !canvas) {
@@ -1062,8 +1241,9 @@ function sealConfession(event) {
     id: makeId(),
     recipient,
     message,
-    sketch: canvas.toDataURL("image/png"),
+    sketch: createSketchData(),
     sealedAt: new Date().toISOString(),
+    demo: false,
   });
 
   confessions = sortByNewest([confession, ...confessions]);
@@ -1073,14 +1253,33 @@ function sealConfession(event) {
   clearReferenceImage();
   resetSketch();
   updateMessageMetrics();
-  setStatus("Your anonymous confession has been sent to the archive.");
+  setStatus("Saving your confession...");
   scrollToPageSection("archive");
+
+  try {
+    const savedRemotely = await saveFirebaseConfession(firebaseConfig, {
+      id: confession.id,
+      recipient: confession.recipient,
+      message: confession.message,
+      sketch: confession.sketchData,
+      sealedAt: confession.sealedAt,
+      demo: false,
+    });
+
+    setStatus(
+      savedRemotely
+        ? "Your anonymous confession has been saved to the shared archive."
+        : "Your confession was saved on this browser. Add Firebase configuration to share it.",
+    );
+  } catch (error) {
+    console.warn("Ink and Roses could not save this confession to Firebase.", error);
+    setStatus("Your confession was saved on this browser, but Firebase could not be reached.");
+  }
 }
 
 if (canvas) {
   ctx = canvas.getContext("2d", { willReadFrequently: true });
-  fillSketchPaper();
-  saveSketchState();
+  resetSketch();
   canvas.addEventListener("pointerdown", startSketch);
   canvas.addEventListener("pointermove", moveSketch);
   canvas.addEventListener("pointerup", endSketch);
@@ -1101,8 +1300,7 @@ setActiveTool(activeTool);
 undoButton?.addEventListener("click", restoreSketchState);
 
 clearButton?.addEventListener("click", () => {
-  saveSketchState();
-  fillSketchPaper();
+  resetSketch();
 });
 
 downloadButton?.addEventListener("click", downloadSketch);
@@ -1168,8 +1366,33 @@ letterStage?.addEventListener("keydown", (event) => {
   }
 });
 
-loadConfessions();
-initResultsPage();
-initConfessionPage();
-renderArchive();
+function renderCurrentViews() {
+  initResultsPage();
+  initConfessionPage();
+  renderArchive();
+}
+
+async function initializeRegistry() {
+  loadConfessions();
+  renderCurrentViews();
+
+  if (!hasFirebaseConfig(firebaseConfig)) {
+    document.documentElement.dataset.firebase = "local";
+    console.info("Ink and Roses is using local storage until firebase-config.js is completed.");
+    return;
+  }
+
+  try {
+    document.documentElement.dataset.firebase = "connecting";
+    const remoteConfessions = await loadFirebaseConfessions(firebaseConfig);
+    mergeConfessions(remoteConfessions);
+    renderCurrentViews();
+    document.documentElement.dataset.firebase = "connected";
+  } catch (error) {
+    document.documentElement.dataset.firebase = "offline";
+    console.warn("Ink and Roses could not load Firebase confessions.", error);
+  }
+}
+
+initializeRegistry();
 updateMessageMetrics();
