@@ -1,13 +1,17 @@
 # Firebase setup
 
-1. Create a Firebase project and register a Web app.
-2. Create a Cloud Firestore database.
-3. Enable Anonymous authentication in Firebase Authentication.
-4. The Web app configuration is already stored in `firebase-config.js`.
-5. Deploy `firestore.rules` from the Firebase console or with:
+The repository is connected to the `ink-and-roses` Firebase project.
+
+Required Firebase console settings:
+
+1. Create a Cloud Firestore database.
+2. Enable Anonymous authentication in Firebase Authentication.
+3. The Web app configuration is stored in `firebase-config.js`.
+
+Deploy Hosting and Firestore rules with:
 
 ```bash
-firebase deploy --only firestore:rules
+firebase deploy
 ```
 
 New confessions are stored in the `confessions` collection. Sketches use normalized
