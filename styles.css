@@ -1093,12 +1093,16 @@ h2 {
   }
 
   .vine-frame {
-    inset: 22px max(12px, calc((100vw - 420px) / 2));
+    inset: 12px;
   }
 
   .hero-search h1,
   .home-subtitle {
     width: min(100%, 420px);
+  }
+
+  .hero-search h1 {
+    font-size: 32px;
   }
 
   .home-search-form {
@@ -1232,12 +1236,16 @@ h2 {
   }
 
   .vine-frame {
-    inset-inline: max(10px, calc((100vw - 330px) / 2));
+    inset: 8px 6px;
   }
 
   .hero-search h1,
   .home-subtitle {
     width: min(100%, 330px);
+  }
+
+  .hero-search h1 {
+    font-size: 28px;
   }
 
   .eyebrow {
