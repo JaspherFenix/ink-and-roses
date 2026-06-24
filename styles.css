@@ -1023,7 +1023,7 @@ h2 {
   }
 
   .site-header {
-    padding: 14px 16px;
+    padding: 12px 10px;
     align-items: flex-start;
   }
 
@@ -1048,11 +1048,11 @@ h2 {
 
   .hero-search,
   .page-shell {
-    padding: 38px 18px;
+    padding: 34px 10px;
   }
 
   .hero-search {
-    padding: 52px 18px 44px;
+    padding: 48px 12px 40px;
   }
 
   h1,
@@ -1092,6 +1092,15 @@ h2 {
     width: min(100%, 420px);
   }
 
+  .vine-frame {
+    inset: 22px max(12px, calc((100vw - 420px) / 2));
+  }
+
+  .hero-search h1,
+  .home-subtitle {
+    width: min(100%, 420px);
+  }
+
   .home-search-form {
     gap: 8px;
     margin-top: 24px;
@@ -1121,7 +1130,17 @@ h2 {
 
   .confession-panel,
   .sketch-panel {
-    padding: 16px;
+    padding: 12px;
+  }
+
+  .search-result,
+  .empty-state {
+    padding: 12px;
+  }
+
+  .archive-card,
+  .sealed-card {
+    padding: 10px;
   }
 
   .field textarea {
@@ -1188,15 +1207,36 @@ h2 {
 
   .hero-search,
   .page-shell {
-    padding: 28px 14px;
+    padding: 24px 8px;
   }
 
   .hero-search {
-    padding: 44px 14px 34px;
+    padding: 40px 10px 30px;
+  }
+
+  .confession-panel,
+  .sketch-panel,
+  .search-result,
+  .empty-state {
+    padding: 10px;
+  }
+
+  .archive-card,
+  .sealed-card {
+    padding: 8px;
   }
 
   .home-search-form,
   .home-actions {
+    width: min(100%, 330px);
+  }
+
+  .vine-frame {
+    inset-inline: max(10px, calc((100vw - 330px) / 2));
+  }
+
+  .hero-search h1,
+  .home-subtitle {
     width: min(100%, 330px);
   }
 
