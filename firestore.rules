@@ -4,13 +4,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /confessions/{confessionId} {
       allow get: if true;
-      allow list: if request.query.limit != null
-        && request.query.limit <= 9;
+      allow list: if false;
 
       allow create: if request.resource.data.keys().hasOnly([
           'id',
           'recipient',
-          'recipientSearch',
           'message',
           'sketch',
           'sealedAt',
@@ -23,9 +21,6 @@ service cloud.firestore {
         && request.resource.data.recipient is string
         && request.resource.data.recipient.size() > 0
         && request.resource.data.recipient.size() <= 120
-        && request.resource.data.recipientSearch is string
-        && request.resource.data.recipientSearch.size() > 0
-        && request.resource.data.recipientSearch.size() <= 120
         && request.resource.data.message is string
         && request.resource.data.message.size() > 0
         && request.resource.data.message.size() <= 5000
@@ -49,6 +44,29 @@ service cloud.firestore {
         && request.resource.data.sketch.pointCount is int
         && request.resource.data.sketch.pointCount >= 0
         && request.resource.data.sketch.pointCount <= 12000;
+
+      allow update, delete: if false;
+    }
+
+    match /confessionIndex/{confessionId} {
+      allow get: if true;
+      allow list: if request.query.limit != null
+        && request.query.limit <= 9;
+
+      allow create: if request.resource.data.keys().hasOnly([
+          'recipient',
+          'recipientSearch',
+          'sealedAt'
+        ])
+        && confessionId.size() <= 100
+        && request.resource.data.recipient is string
+        && request.resource.data.recipient.size() > 0
+        && request.resource.data.recipient.size() <= 120
+        && request.resource.data.recipientSearch is string
+        && request.resource.data.recipientSearch.size() > 0
+        && request.resource.data.recipientSearch.size() <= 120
+        && request.resource.data.sealedAt is string
+        && request.resource.data.sealedAt.size() <= 40;
 
       allow update, delete: if false;
     }

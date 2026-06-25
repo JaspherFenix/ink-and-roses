@@ -3,7 +3,7 @@ import {
   loadFirebaseConfession,
   saveFirebaseConfession,
   searchFirebaseConfessions,
-} from "./firebase-client.js?v=20260625-1";
+} from "./firebase-client.js?v=20260625-2";
 
 const petalField = document.querySelector(".petal-field");
 const searchInput = document.querySelector("#searchName");

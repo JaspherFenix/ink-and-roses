@@ -13,10 +13,10 @@ Deploy Hosting and Firestore rules with:
 firebase deploy
 ```
 
-New confessions are stored in the `confessions` collection. Sketches use normalized
-stroke points, not image data. Firestore is the sole confession data source; the
-rules allow validated anonymous creates, public reads, and no client updates or deletes.
+Full letters are stored in the `confessions` collection. Search summaries are stored
+separately in `confessionIndex` with only the recipient, normalized recipient, and
+sealed date. Sketches use normalized stroke points, not image data.
 
-The homepage does not read confession documents. Search results use the normalized
-`recipientSearch` field and load eight documents per page, while opened letters fetch
-only the selected confession document.
+The homepage does not read Firestore. Search results load eight small index documents
+per page. Opened letters fetch only the selected full confession. Firestore rules block
+all collection queries against full messages and sketches.

@@ -74,7 +74,7 @@ export async function searchFirebaseConfessions(
   constraints.push(services.firestoreSdk.limit(pageSize + 1));
 
   const confessionQuery = services.firestoreSdk.query(
-    services.firestoreSdk.collection(services.db, "confessions"),
+    services.firestoreSdk.collection(services.db, "confessionIndex"),
     ...constraints,
   );
   const snapshot = await services.firestoreSdk.getDocs(confessionQuery);
@@ -119,12 +119,20 @@ export async function saveFirebaseConfession(config, confession) {
   }
 
   const confessionReference = services.firestoreSdk.doc(services.db, "confessions", confession.id);
+  const indexReference = services.firestoreSdk.doc(services.db, "confessionIndex", confession.id);
+  const batch = services.firestoreSdk.writeBatch(services.db);
+  const createdAt = services.firestoreSdk.serverTimestamp();
 
-  await services.firestoreSdk.setDoc(confessionReference, {
+  batch.set(confessionReference, {
     ...confession,
-    recipientSearch: normalizeRecipientSearch(confession.recipient),
-    createdAt: services.firestoreSdk.serverTimestamp(),
+    createdAt,
   });
+  batch.set(indexReference, {
+    recipient: confession.recipient,
+    recipientSearch: normalizeRecipientSearch(confession.recipient),
+    sealedAt: confession.sealedAt,
+  });
+  await batch.commit();
 
   return true;
 }
