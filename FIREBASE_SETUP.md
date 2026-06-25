@@ -16,3 +16,7 @@ firebase deploy
 New confessions are stored in the `confessions` collection. Sketches use normalized
 stroke points, not image data. Firestore is the sole confession data source; the
 rules allow validated anonymous creates, public reads, and no client updates or deletes.
+
+The homepage does not read confession documents. Search results use the normalized
+`recipientSearch` field and load eight documents per page, while opened letters fetch
+only the selected confession document.

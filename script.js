@@ -1,13 +1,18 @@
 import {
   hasFirebaseConfig,
-  loadFirebaseConfessions,
+  loadFirebaseConfession,
   saveFirebaseConfession,
-} from "./firebase-client.js?v=20260624-2";
+  searchFirebaseConfessions,
+} from "./firebase-client.js?v=20260625-1";
 
 const petalField = document.querySelector(".petal-field");
 const searchInput = document.querySelector("#searchName");
 const searchResults = document.querySelector("#searchResults");
 const resultSummary = document.querySelector("#resultSummary");
+const resultsPagination = document.querySelector("#resultsPagination");
+const previousResultsButton = document.querySelector("#previousResults");
+const nextResultsButton = document.querySelector("#nextResults");
+const resultPage = document.querySelector("#resultPage");
 const archiveResults = document.querySelector("#archiveResults");
 const confessionForm = document.querySelector("#confessionForm");
 const recipientInput = document.querySelector("#recipientName");
@@ -58,6 +63,7 @@ const maximumSketchStrokes = 240;
 const maximumSketchPoints = 12000;
 const maximumPointsPerStroke = 1600;
 const minimumPointDistance = 0.0015;
+const searchPageSize = 8;
 
 let activeTool = "pen";
 let isDrawing = false;
@@ -74,6 +80,11 @@ let referenceCropSourceUrl = "";
 let referenceCropState = null;
 let referenceCropDrag = null;
 let restoreReferenceAfterCrop = false;
+let searchPageIndex = 0;
+let searchPageCursors = [null];
+let searchNextCursor = null;
+let searchHasMore = false;
+let activeSearchQuery = "";
 
 function blankSketchData() {
   const svg = `
@@ -213,14 +224,6 @@ function clearRetiredConfessionStorage() {
   }
 }
 
-function replaceConfessions(items) {
-  confessions = sortByNewest(
-    items
-      .map(normalizeConfession)
-      .filter((confession) => confession.message),
-  );
-}
-
 function formatDate(value) {
   try {
     return new Intl.DateTimeFormat(undefined, {
@@ -254,16 +257,6 @@ function scrollToPageSection(targetId) {
   }
 }
 
-function findMatches(query) {
-  const normalized = query.trim().toLowerCase();
-
-  if (!normalized) {
-    return confessions.slice(0, 8);
-  }
-
-  return confessions.filter((confession) => confession.recipient.toLowerCase().includes(normalized));
-}
-
 function renderEmptySearch(text) {
   if (!searchResults) {
     return;
@@ -276,7 +269,7 @@ function renderEmptySearch(text) {
   searchResults.appendChild(empty);
 }
 
-function renderSearchResults(matches, query) {
+function renderSearchResults(matches, query, pageNumber, hasMore) {
   if (!searchResults || !resultSummary) {
     return;
   }
@@ -284,12 +277,13 @@ function renderSearchResults(matches, query) {
   if (matches.length === 0) {
     resultSummary.textContent = query ? `No sealed names matched "${query}".` : "No sealed names are showing yet.";
     renderEmptySearch("No matching names in the candlelit registry.");
+    updateSearchPagination(pageNumber, false);
     return;
   }
 
   resultSummary.textContent = query
-    ? `${matches.length} sealed ${matches.length === 1 ? "name" : "names"} matched "${query}".`
-    : "Showing the newest sealed names in the registry.";
+    ? `Page ${pageNumber} of names beginning with "${query}".`
+    : `Page ${pageNumber} of the newest sealed names.`;
 
   searchResults.replaceChildren();
 
@@ -312,6 +306,46 @@ function renderSearchResults(matches, query) {
     link.append(name, preview, date);
     searchResults.appendChild(link);
   });
+
+  updateSearchPagination(pageNumber, hasMore);
+}
+
+function updateSearchPagination(pageNumber, hasMore) {
+  if (!resultsPagination || !previousResultsButton || !nextResultsButton || !resultPage) {
+    return;
+  }
+
+  const hasPrevious = pageNumber > 1;
+  resultsPagination.hidden = !hasPrevious && !hasMore;
+  previousResultsButton.disabled = !hasPrevious;
+  nextResultsButton.disabled = !hasMore;
+  resultPage.textContent = `Page ${pageNumber}`;
+}
+
+function renderSearchLoading() {
+  if (!searchResults || !resultSummary) {
+    return;
+  }
+
+  resultSummary.textContent = "Opening the candlelit registry...";
+  renderEmptySearch("Searching sealed names...");
+
+  if (resultsPagination) {
+    resultsPagination.hidden = true;
+  }
+}
+
+function renderSearchError() {
+  if (!searchResults || !resultSummary) {
+    return;
+  }
+
+  resultSummary.textContent = "The registry could not be reached.";
+  renderEmptySearch("Please try searching again in a moment.");
+
+  if (resultsPagination) {
+    resultsPagination.hidden = true;
+  }
 }
 
 function renderArchive() {
@@ -715,31 +749,77 @@ function renderSelectedLetter(confession) {
   closeLetter();
 }
 
-function initResultsPage() {
+async function loadSearchPage(pageIndex) {
   if (!searchResults) {
     return;
   }
 
-  const query = getQueryParam("q");
+  renderSearchLoading();
 
-  if (searchInput) {
-    searchInput.value = query;
-  }
+  const page = await searchFirebaseConfessions(firebaseConfig, {
+    searchTerm: activeSearchQuery,
+    pageSize: searchPageSize,
+    startAfterDocument: searchPageCursors[pageIndex],
+  });
 
-  renderSearchResults(findMatches(query), query);
+  searchPageIndex = pageIndex;
+  searchNextCursor = page.nextCursor;
+  searchHasMore = page.hasMore;
+  confessions = page.items.map(normalizeConfession);
+  renderSearchResults(confessions, activeSearchQuery, pageIndex + 1, page.hasMore);
 }
 
-function initConfessionPage() {
+async function initResultsPage() {
+  if (!searchResults) {
+    return;
+  }
+
+  activeSearchQuery = getQueryParam("q").trim();
+  searchPageIndex = 0;
+  searchPageCursors = [null];
+  searchNextCursor = null;
+  searchHasMore = false;
+
+  if (searchInput) {
+    searchInput.value = activeSearchQuery;
+  }
+
+  await loadSearchPage(0);
+}
+
+function renderMissingLetter() {
+  latestConfession = null;
+
+  if (sealedTo) {
+    sealedTo.textContent = "No sealed letter found";
+  }
+
+  if (sealedMessage) {
+    sealedMessage.textContent = "Return to the registry and choose another name.";
+  }
+
+  if (letterSealName) {
+    letterSealName.textContent = "Ink and Roses";
+  }
+
+  setStatus("This confession is no longer available.");
+}
+
+async function initConfessionPage() {
   if (!letterStage) {
     return;
   }
 
   const id = getQueryParam("id");
-  const confession = confessions.find((item) => item.id === id) || confessions[0];
+  const savedConfession = await loadFirebaseConfession(firebaseConfig, id);
+  const confession = savedConfession ? normalizeConfession(savedConfession) : null;
 
   if (confession) {
     renderSelectedLetter(confession);
+    return;
   }
+
+  renderMissingLetter();
 }
 
 function fillSketchPaper(targetContext = ctx, targetCanvas = canvas) {
@@ -1122,7 +1202,7 @@ async function sealConfession(event) {
     }
 
     confessions = sortByNewest([confession, ...confessions]);
-    renderCurrentViews();
+    renderArchive();
     confessionForm.reset();
     clearReferenceImage();
     resetSketch();
@@ -1207,6 +1287,39 @@ window.addEventListener("beforeunload", () => {
 });
 messageInput?.addEventListener("input", updateMessageMetrics);
 confessionForm?.addEventListener("submit", sealConfession);
+previousResultsButton?.addEventListener("click", async () => {
+  if (searchPageIndex === 0) {
+    return;
+  }
+
+  previousResultsButton.disabled = true;
+  nextResultsButton.disabled = true;
+
+  try {
+    searchPageCursors.pop();
+    await loadSearchPage(searchPageIndex - 1);
+  } catch (error) {
+    console.warn("Ink and Roses could not open the previous search page.", error);
+    renderSearchError();
+  }
+});
+nextResultsButton?.addEventListener("click", async () => {
+  if (!searchHasMore || !searchNextCursor) {
+    return;
+  }
+
+  previousResultsButton.disabled = true;
+  nextResultsButton.disabled = true;
+
+  try {
+    searchPageCursors.push(searchNextCursor);
+    await loadSearchPage(searchPageIndex + 1);
+  } catch (error) {
+    searchPageCursors.pop();
+    console.warn("Ink and Roses could not open the next search page.", error);
+    renderSearchError();
+  }
+});
 
 scrollTriggers.forEach((trigger) => {
   trigger.addEventListener("click", (event) => {
@@ -1223,16 +1336,10 @@ letterStage?.addEventListener("keydown", (event) => {
   }
 });
 
-function renderCurrentViews() {
-  initResultsPage();
-  initConfessionPage();
-  renderArchive();
-}
-
 async function initializeRegistry() {
   clearRetiredConfessionStorage();
   confessions = [];
-  renderCurrentViews();
+  renderArchive();
 
   if (!hasFirebaseConfig(firebaseConfig)) {
     document.documentElement.dataset.firebase = "unconfigured";
@@ -1242,13 +1349,23 @@ async function initializeRegistry() {
 
   try {
     document.documentElement.dataset.firebase = "connecting";
-    const remoteConfessions = await loadFirebaseConfessions(firebaseConfig);
-    replaceConfessions(remoteConfessions);
-    renderCurrentViews();
+
+    if (searchResults) {
+      await initResultsPage();
+    } else if (letterStage) {
+      await initConfessionPage();
+    }
+
     document.documentElement.dataset.firebase = "connected";
   } catch (error) {
     document.documentElement.dataset.firebase = "offline";
     console.warn("Ink and Roses could not load Firebase confessions.", error);
+
+    if (searchResults) {
+      renderSearchError();
+    } else if (letterStage) {
+      renderMissingLetter();
+    }
   }
 }
 

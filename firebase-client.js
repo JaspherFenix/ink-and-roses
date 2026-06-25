@@ -8,6 +8,14 @@ export function hasFirebaseConfig(config) {
   return Boolean(config?.apiKey && config?.authDomain && config?.projectId && config?.appId);
 }
 
+export function normalizeRecipientSearch(value) {
+  return String(value || "")
+    .trim()
+    .toLocaleLowerCase("en")
+    .replace(/\s+/g, " ")
+    .slice(0, 120);
+}
+
 async function getFirebaseServices(config) {
   if (!hasFirebaseConfig(config)) {
     return null;
@@ -32,24 +40,75 @@ async function getFirebaseServices(config) {
   return firebaseServicesPromise;
 }
 
-export async function loadFirebaseConfessions(config) {
+export async function searchFirebaseConfessions(
+  config,
+  {
+    searchTerm = "",
+    pageSize = 8,
+    startAfterDocument = null,
+  } = {},
+) {
   const services = await getFirebaseServices(config);
 
   if (!services) {
-    return [];
+    return {
+      items: [],
+      hasMore: false,
+      nextCursor: null,
+    };
   }
+
+  const normalizedSearch = normalizeRecipientSearch(searchTerm);
+  const constraints = normalizedSearch
+    ? [
+        services.firestoreSdk.where("recipientSearch", ">=", normalizedSearch),
+        services.firestoreSdk.where("recipientSearch", "<=", `${normalizedSearch}\uf8ff`),
+        services.firestoreSdk.orderBy("recipientSearch", "asc"),
+      ]
+    : [services.firestoreSdk.orderBy("sealedAt", "desc")];
+
+  if (startAfterDocument) {
+    constraints.push(services.firestoreSdk.startAfter(startAfterDocument));
+  }
+
+  constraints.push(services.firestoreSdk.limit(pageSize + 1));
 
   const confessionQuery = services.firestoreSdk.query(
     services.firestoreSdk.collection(services.db, "confessions"),
-    services.firestoreSdk.orderBy("sealedAt", "desc"),
-    services.firestoreSdk.limit(100),
+    ...constraints,
   );
   const snapshot = await services.firestoreSdk.getDocs(confessionQuery);
+  const visibleDocuments = snapshot.docs.slice(0, pageSize);
+  const hasMore = snapshot.docs.length > pageSize;
 
-  return snapshot.docs.map((documentSnapshot) => ({
-    ...documentSnapshot.data(),
-    id: documentSnapshot.id,
-  }));
+  return {
+    items: visibleDocuments.map((documentSnapshot) => ({
+      ...documentSnapshot.data(),
+      id: documentSnapshot.id,
+    })),
+    hasMore,
+    nextCursor: hasMore ? visibleDocuments[visibleDocuments.length - 1] : null,
+  };
+}
+
+export async function loadFirebaseConfession(config, confessionId) {
+  const services = await getFirebaseServices(config);
+
+  if (!services || !confessionId) {
+    return null;
+  }
+
+  const confessionReference = services.firestoreSdk.doc(services.db, "confessions", confessionId);
+  const snapshot = await services.firestoreSdk.getDoc(confessionReference);
+
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  return {
+    ...snapshot.data(),
+    id: snapshot.id,
+  };
 }
 
 export async function saveFirebaseConfession(config, confession) {
@@ -63,6 +122,7 @@ export async function saveFirebaseConfession(config, confession) {
 
   await services.firestoreSdk.setDoc(confessionReference, {
     ...confession,
+    recipientSearch: normalizeRecipientSearch(confession.recipient),
     createdAt: services.firestoreSdk.serverTimestamp(),
   });
 
