@@ -9,6 +9,7 @@ service cloud.firestore {
       allow create: if request.resource.data.keys().hasOnly([
           'id',
           'recipient',
+          'recipientSearch',
           'message',
           'sketch',
           'sealedAt',
@@ -22,14 +23,21 @@ service cloud.firestore {
         && request.resource.data.recipient is string
         && request.resource.data.recipient.size() > 0
         && request.resource.data.recipient.size() <= 80
+        && request.resource.data.recipientSearch is string
+        && request.resource.data.recipientSearch.size() > 0
+        && request.resource.data.recipientSearch.size() <= 80
         && request.resource.data.message is string
         && request.resource.data.message.size() > 0
         && request.resource.data.message.size() <= 1000
         && request.resource.data.sealedAt is string
         && request.resource.data.sealedAt.size() <= 40
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
         && request.resource.data.demo == false
         && request.resource.data.createdAt == request.time
+        && existsAfter(/databases/$(database)/documents/confessionIndex/$(confessionId))
+        && getAfter(/databases/$(database)/documents/confessionIndex/$(confessionId)).data.recipient == request.resource.data.recipient
+        && getAfter(/databases/$(database)/documents/confessionIndex/$(confessionId)).data.recipientSearch == request.resource.data.recipientSearch
+        && getAfter(/databases/$(database)/documents/confessionIndex/$(confessionId)).data.sealedAt == request.resource.data.sealedAt
         && request.resource.data.sketch is map
         && request.resource.data.sketch.keys().hasOnly([
           'version',
@@ -55,7 +63,27 @@ service cloud.firestore {
       allow list: if request.query.limit != null
         && request.query.limit <= 9;
 
-      allow create, update, delete: if false;
+      allow create: if request.resource.data.keys().hasOnly([
+          'recipient',
+          'recipientSearch',
+          'sealedAt'
+        ])
+        && confessionId.size() <= 100
+        && request.resource.data.recipient is string
+        && request.resource.data.recipient.size() > 0
+        && request.resource.data.recipient.size() <= 80
+        && request.resource.data.recipientSearch is string
+        && request.resource.data.recipientSearch.size() > 0
+        && request.resource.data.recipientSearch.size() <= 80
+        && request.resource.data.sealedAt is string
+        && request.resource.data.sealedAt.size() <= 40
+        && existsAfter(/databases/$(database)/documents/confessions/$(confessionId))
+        && getAfter(/databases/$(database)/documents/confessions/$(confessionId)).data.status == 'approved'
+        && getAfter(/databases/$(database)/documents/confessions/$(confessionId)).data.recipient == request.resource.data.recipient
+        && getAfter(/databases/$(database)/documents/confessions/$(confessionId)).data.recipientSearch == request.resource.data.recipientSearch
+        && getAfter(/databases/$(database)/documents/confessions/$(confessionId)).data.sealedAt == request.resource.data.sealedAt;
+
+      allow update, delete: if false;
     }
   }
 }

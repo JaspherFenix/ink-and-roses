@@ -126,13 +126,23 @@ export async function saveFirebaseConfession(config, confession) {
   }
 
   const confessionReference = services.firestoreSdk.doc(services.db, "confessions", confession.id);
+  const indexReference = services.firestoreSdk.doc(services.db, "confessionIndex", confession.id);
+  const batch = services.firestoreSdk.writeBatch(services.db);
   const createdAt = services.firestoreSdk.serverTimestamp();
+  const recipientSearch = normalizeRecipientSearch(confession.recipient);
 
-  await services.firestoreSdk.setDoc(confessionReference, {
+  batch.set(confessionReference, {
     ...confession,
-    status: "pending",
+    recipientSearch,
+    status: "approved",
     createdAt,
   });
+  batch.set(indexReference, {
+    recipient: confession.recipient,
+    recipientSearch,
+    sealedAt: confession.sealedAt,
+  });
+  await batch.commit();
 
   return true;
 }

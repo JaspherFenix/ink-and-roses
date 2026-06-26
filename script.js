@@ -3,7 +3,7 @@ import {
   loadFirebaseConfession,
   saveFirebaseConfession,
   searchFirebaseConfessions,
-} from "./firebase-client.js?v=20260626-2";
+} from "./firebase-client.js?v=20260626-3";
 
 const petalField = document.querySelector(".petal-field");
 const searchInput = document.querySelector("#searchName");
@@ -88,6 +88,11 @@ let searchPageCursors = [null];
 let searchNextCursor = null;
 let searchHasMore = false;
 let activeSearchQuery = "";
+let sendSuccessDialog = null;
+let sendSuccessRecipient = null;
+let sendSuccessSearchLink = null;
+let sendSuccessCloseButton = null;
+let sendSuccessPreviousFocus = null;
 
 function blankSketchData() {
   const svg = `
@@ -441,6 +446,120 @@ function setStatus(text) {
   if (detailResponse) {
     detailResponse.textContent = text;
   }
+}
+
+function closeSendSuccessDialog() {
+  if (!sendSuccessDialog || sendSuccessDialog.hidden) {
+    return;
+  }
+
+  sendSuccessDialog.hidden = true;
+  document.body.classList.remove("is-showing-send-success");
+
+  if (sendSuccessPreviousFocus && typeof sendSuccessPreviousFocus.focus === "function") {
+    sendSuccessPreviousFocus.focus();
+  }
+}
+
+function createSendSuccessDialog() {
+  const dialog = document.createElement("div");
+  const backdrop = document.createElement("button");
+  const panel = document.createElement("section");
+  const closeButton = document.createElement("button");
+  const closeIcon = document.createElement("i");
+  const seal = document.createElement("span");
+  const sealIcon = document.createElement("i");
+  const eyebrow = document.createElement("p");
+  const title = document.createElement("h2");
+  const copy = document.createElement("p");
+  const recipient = document.createElement("strong");
+  const actions = document.createElement("div");
+  const searchLink = document.createElement("a");
+  const searchIcon = document.createElement("i");
+  const searchText = document.createElement("span");
+  const keepButton = document.createElement("button");
+
+  dialog.className = "send-success-dialog";
+  dialog.hidden = true;
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-labelledby", "sendSuccessTitle");
+
+  backdrop.className = "send-success-backdrop";
+  backdrop.type = "button";
+  backdrop.setAttribute("aria-label", "Close confirmation");
+
+  panel.className = "send-success-panel";
+  panel.tabIndex = -1;
+
+  closeButton.className = "send-success-close";
+  closeButton.type = "button";
+  closeButton.setAttribute("aria-label", "Close confirmation");
+  closeIcon.setAttribute("data-lucide", "x");
+  closeButton.appendChild(closeIcon);
+
+  seal.className = "send-success-seal";
+  sealIcon.setAttribute("data-lucide", "mail-check");
+  seal.appendChild(sealIcon);
+
+  eyebrow.className = "eyebrow dark";
+  eyebrow.textContent = "Sealed in the registry";
+  title.id = "sendSuccessTitle";
+  title.textContent = "Your confession can now be found";
+
+  copy.className = "send-success-copy";
+  copy.append("Search ");
+  recipient.className = "send-success-recipient";
+  copy.append(recipient, " to open the sealed paper and sketch.");
+
+  actions.className = "send-success-actions";
+  searchLink.className = "button primary";
+  searchIcon.setAttribute("data-lucide", "search");
+  searchText.textContent = "Search this name";
+  searchLink.append(searchIcon, searchText);
+  keepButton.className = "button";
+  keepButton.type = "button";
+  keepButton.textContent = "Keep writing";
+  actions.append(searchLink, keepButton);
+
+  panel.append(closeButton, seal, eyebrow, title, copy, actions);
+  dialog.append(backdrop, panel);
+  document.body.appendChild(dialog);
+
+  sendSuccessDialog = dialog;
+  sendSuccessRecipient = recipient;
+  sendSuccessSearchLink = searchLink;
+  sendSuccessCloseButton = closeButton;
+
+  backdrop.addEventListener("click", closeSendSuccessDialog);
+  closeButton.addEventListener("click", closeSendSuccessDialog);
+  keepButton.addEventListener("click", closeSendSuccessDialog);
+  dialog.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeSendSuccessDialog();
+    }
+  });
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+function showSendSuccess(confession) {
+  if (!confession) {
+    return;
+  }
+
+  if (!sendSuccessDialog) {
+    createSendSuccessDialog();
+  }
+
+  sendSuccessPreviousFocus = document.activeElement;
+  sendSuccessRecipient.textContent = confession.recipient;
+  sendSuccessSearchLink.href = `/results?q=${encodeURIComponent(confession.recipient)}`;
+  sendSuccessDialog.hidden = false;
+  document.body.classList.add("is-showing-send-success");
+  sendSuccessCloseButton.focus();
 }
 
 function clamp(value, minimum, maximum) {
@@ -1236,7 +1355,7 @@ async function sealConfession(event) {
     message,
     sketch: createSketchData(),
     sealedAt: new Date().toISOString(),
-    status: "pending",
+    status: "approved",
     demo: false,
   });
 
@@ -1249,6 +1368,7 @@ async function sealConfession(event) {
       message: confession.message,
       sketch: confession.sketchData,
       sealedAt: confession.sealedAt,
+      status: "approved",
       demo: false,
     });
 
@@ -1263,7 +1383,8 @@ async function sealConfession(event) {
     clearReferenceImage();
     resetSketch();
     updateMessageMetrics();
-    setStatus("Your anonymous confession has been sent for approval.");
+    setStatus("Your anonymous confession has been sealed and added to search.");
+    showSendSuccess(confession);
   } catch (error) {
     console.warn("Ink and Roses could not save this confession to Firebase.", error);
     setStatus("Firebase could not save this confession. Please try again.");

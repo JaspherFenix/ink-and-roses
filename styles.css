@@ -35,6 +35,10 @@ body.is-cropping-reference {
   overflow: hidden;
 }
 
+body.is-showing-send-success {
+  overflow: hidden;
+}
+
 .home-page {
   background:
     linear-gradient(90deg, rgba(32, 23, 18, 0.08) 1px, transparent 1px),
@@ -838,6 +842,130 @@ img.brand-sigil {
 
 .mobile-submit-wrap {
   display: none;
+}
+
+.send-success-dialog[hidden] {
+  display: none;
+}
+
+.send-success-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  padding: 18px;
+  place-items: center;
+}
+
+.send-success-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(84, 25, 40, 0.24), transparent 34%),
+    rgba(21, 21, 21, 0.58);
+  cursor: pointer;
+}
+
+.send-success-panel {
+  position: relative;
+  display: grid;
+  width: min(100%, 500px);
+  gap: 14px;
+  border: 1px solid rgba(201, 162, 77, 0.62);
+  border-radius: 8px;
+  padding: 30px;
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 232, 0.98), rgba(242, 226, 194, 0.96)),
+    var(--parchment);
+  box-shadow: 0 34px 90px rgba(21, 21, 21, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.52);
+}
+
+.send-success-panel::before,
+.send-success-panel::after {
+  position: absolute;
+  width: 84px;
+  height: 84px;
+  content: "";
+  pointer-events: none;
+}
+
+.send-success-panel::before {
+  top: 12px;
+  left: 12px;
+  border-top: 2px solid rgba(201, 162, 77, 0.78);
+  border-left: 2px solid rgba(201, 162, 77, 0.78);
+}
+
+.send-success-panel::after {
+  right: 12px;
+  bottom: 12px;
+  border-right: 2px solid rgba(201, 162, 77, 0.78);
+  border-bottom: 2px solid rgba(201, 162, 77, 0.78);
+}
+
+.send-success-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(84, 25, 40, 0.24);
+  border-radius: 50%;
+  color: var(--rose-deep);
+  background: rgba(255, 247, 223, 0.72);
+  cursor: pointer;
+}
+
+.send-success-seal {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ivory);
+  background:
+    radial-gradient(circle at 38% 30%, rgba(255, 202, 177, 0.46) 0 10%, transparent 11%),
+    radial-gradient(circle, #9b3327 0 45%, #621d20 46% 100%);
+  box-shadow: 0 10px 26px rgba(32, 23, 18, 0.24), inset 0 0 0 5px rgba(255, 209, 168, 0.15);
+}
+
+.send-success-seal svg {
+  width: 28px;
+  height: 28px;
+}
+
+.send-success-panel h2 {
+  max-width: 400px;
+  font-size: 33px;
+}
+
+.send-success-copy {
+  max-width: 410px;
+  margin: 0;
+  color: rgba(32, 23, 18, 0.86);
+  font-size: 23px;
+  font-style: italic;
+}
+
+.send-success-recipient {
+  color: var(--rose-deep);
+  font-style: normal;
+}
+
+.send-success-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.send-success-actions .button {
+  min-width: 170px;
 }
 
 .reference-window[hidden] {
@@ -1720,6 +1848,31 @@ img.brand-sigil {
   .message-metrics {
     flex-direction: column;
     gap: 2px;
+  }
+
+  .send-success-dialog {
+    padding: 10px;
+  }
+
+  .send-success-panel {
+    padding: 24px 16px 18px;
+  }
+
+  .send-success-panel h2 {
+    font-size: 27px;
+  }
+
+  .send-success-copy {
+    font-size: 20px;
+  }
+
+  .send-success-actions {
+    flex-direction: column;
+  }
+
+  .send-success-actions .button {
+    width: 100%;
+    min-width: 0;
   }
 
   .letter-actions .tool-button {
