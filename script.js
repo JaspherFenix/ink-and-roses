@@ -3,10 +3,11 @@ import {
   loadFirebaseConfession,
   saveFirebaseConfession,
   searchFirebaseConfessions,
-} from "./firebase-client.js?v=20260626-1";
+} from "./firebase-client.js?v=20260626-2";
 
 const petalField = document.querySelector(".petal-field");
 const searchInput = document.querySelector("#searchName");
+const searchForms = document.querySelectorAll('form[action="/results"]');
 const searchResults = document.querySelector("#searchResults");
 const resultSummary = document.querySelector("#resultSummary");
 const resultsPagination = document.querySelector("#resultsPagination");
@@ -244,11 +245,33 @@ function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name) || "";
 }
 
+function getConfessionIdFromLocation() {
+  const pathMatch = window.location.pathname.match(/\/confession\/([^/]+)\/?$/);
+
+  if (pathMatch) {
+    return decodeURIComponent(pathMatch[1]);
+  }
+
+  return getQueryParam("id");
+}
+
+function cleanConfessionUrl(id) {
+  if (!id || !window.history || typeof window.history.replaceState !== "function") {
+    return;
+  }
+
+  const cleanPath = `/confession/${encodeURIComponent(id)}`;
+
+  if (window.location.pathname !== cleanPath) {
+    window.history.replaceState(null, "", cleanPath);
+  }
+}
+
 function scrollToPageSection(targetId) {
   const section = document.getElementById(targetId);
 
   if (!section) {
-    window.location.href = `index.html#${encodeURIComponent(targetId)}`;
+    window.location.href = `/#${encodeURIComponent(targetId)}`;
     return;
   }
 
@@ -284,9 +307,7 @@ function renderSearchResults(matches, query, pageNumber, hasMore) {
     return;
   }
 
-  resultSummary.textContent = query
-    ? `Page ${pageNumber} of names beginning with "${query}".`
-    : `Page ${pageNumber} of the newest sealed names.`;
+  resultSummary.textContent = `Page ${pageNumber} of names beginning with "${query}".`;
 
   searchResults.replaceChildren();
 
@@ -297,7 +318,7 @@ function renderSearchResults(matches, query, pageNumber, hasMore) {
     const date = document.createElement("span");
 
     link.className = "search-result";
-    link.href = `confession.html?id=${encodeURIComponent(confession.id)}`;
+    link.href = `/confession/${encodeURIComponent(confession.id)}`;
     name.className = "result-name";
     preview.className = "result-preview";
     date.className = "result-date";
@@ -351,6 +372,19 @@ function renderSearchError() {
   }
 }
 
+function renderSearchPrompt() {
+  if (!searchResults || !resultSummary) {
+    return;
+  }
+
+  resultSummary.textContent = "Search a name to reveal matching sealed papers.";
+  renderEmptySearch("No name has been searched yet.");
+
+  if (resultsPagination) {
+    resultsPagination.hidden = true;
+  }
+}
+
 function renderArchive() {
   if (!archiveResults) {
     return;
@@ -376,7 +410,7 @@ function renderArchive() {
     const date = document.createElement("span");
 
     link.className = "archive-card";
-    link.href = `confession.html?id=${encodeURIComponent(confession.id)}`;
+    link.href = `/confession/${encodeURIComponent(confession.id)}`;
     paper.className = "archive-paper";
     icon.setAttribute("data-lucide", "mail");
     copy.className = "archive-copy";
@@ -787,6 +821,11 @@ async function initResultsPage() {
     searchInput.value = activeSearchQuery;
   }
 
+  if (!activeSearchQuery) {
+    renderSearchPrompt();
+    return;
+  }
+
   await loadSearchPage(0);
 }
 
@@ -813,7 +852,10 @@ async function initConfessionPage() {
     return;
   }
 
-  const id = getQueryParam("id");
+  const id = getConfessionIdFromLocation();
+
+  cleanConfessionUrl(id);
+
   const savedConfession = await loadFirebaseConfession(firebaseConfig, id);
   const confession = savedConfession ? normalizeConfession(savedConfession) : null;
 
@@ -1333,6 +1375,23 @@ nextResultsButton?.addEventListener("click", async () => {
     console.warn("Ink and Roses could not open the next search page.", error);
     renderSearchError();
   }
+});
+
+searchForms.forEach((form) => {
+  form.addEventListener("submit", (event) => {
+    const queryInput = form.querySelector('input[name="q"]');
+    const query = queryInput?.value.trim() || "";
+
+    if (queryInput) {
+      queryInput.value = query;
+    }
+
+    if (!query) {
+      event.preventDefault();
+      renderSearchPrompt();
+      queryInput?.focus();
+    }
+  });
 });
 
 scrollTriggers.forEach((trigger) => {

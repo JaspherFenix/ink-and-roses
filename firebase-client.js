@@ -48,6 +48,16 @@ export async function searchFirebaseConfessions(
     startAfterDocument = null,
   } = {},
 ) {
+  const normalizedSearch = normalizeRecipientSearch(searchTerm);
+
+  if (!normalizedSearch) {
+    return {
+      items: [],
+      hasMore: false,
+      nextCursor: null,
+    };
+  }
+
   const services = await getFirebaseServices(config);
 
   if (!services) {
@@ -58,14 +68,11 @@ export async function searchFirebaseConfessions(
     };
   }
 
-  const normalizedSearch = normalizeRecipientSearch(searchTerm);
-  const constraints = normalizedSearch
-    ? [
-        services.firestoreSdk.where("recipientSearch", ">=", normalizedSearch),
-        services.firestoreSdk.where("recipientSearch", "<=", `${normalizedSearch}\uf8ff`),
-        services.firestoreSdk.orderBy("recipientSearch", "asc"),
-      ]
-    : [services.firestoreSdk.orderBy("sealedAt", "desc")];
+  const constraints = [
+    services.firestoreSdk.where("recipientSearch", ">=", normalizedSearch),
+    services.firestoreSdk.where("recipientSearch", "<=", `${normalizedSearch}\uf8ff`),
+    services.firestoreSdk.orderBy("recipientSearch", "asc"),
+  ];
 
   if (startAfterDocument) {
     constraints.push(services.firestoreSdk.startAfter(startAfterDocument));

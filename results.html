@@ -31,12 +31,14 @@
           </p>
         </div>
 
-        <form class="inline-search" action="results.html" method="get" aria-label="Search again">
+        <form class="inline-search" action="/results" method="get" aria-label="Search again">
           <input
             id="searchName"
             name="q"
             type="search"
             autocomplete="off"
+            maxlength="80"
+            required
             placeholder="Search another name"
           />
           <button class="button primary" type="submit">
@@ -46,7 +48,7 @@
         </form>
 
         <div class="search-results" id="searchResults" aria-live="polite">
-          <p class="empty-state">No sealed names are showing yet.</p>
+          <p class="empty-state">No name has been searched yet.</p>
         </div>
 
         <nav class="results-pagination" id="resultsPagination" aria-label="Search result pages" hidden>
@@ -64,7 +66,7 @@
     </main>
 
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="firebase-config.js?v=20260626-1"></script>
-    <script type="module" src="script.js?v=20260626-1"></script>
+    <script src="firebase-config.js?v=20260626-2"></script>
+    <script type="module" src="script.js?v=20260626-2"></script>
   </body>
 </html>
