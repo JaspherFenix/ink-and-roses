@@ -13,7 +13,7 @@ export function normalizeRecipientSearch(value) {
     .trim()
     .toLocaleLowerCase("en")
     .replace(/\s+/g, " ")
-    .slice(0, 120);
+    .slice(0, 80);
 }
 
 async function getFirebaseServices(config) {
@@ -119,20 +119,13 @@ export async function saveFirebaseConfession(config, confession) {
   }
 
   const confessionReference = services.firestoreSdk.doc(services.db, "confessions", confession.id);
-  const indexReference = services.firestoreSdk.doc(services.db, "confessionIndex", confession.id);
-  const batch = services.firestoreSdk.writeBatch(services.db);
   const createdAt = services.firestoreSdk.serverTimestamp();
 
-  batch.set(confessionReference, {
+  await services.firestoreSdk.setDoc(confessionReference, {
     ...confession,
+    status: "pending",
     createdAt,
   });
-  batch.set(indexReference, {
-    recipient: confession.recipient,
-    recipientSearch: normalizeRecipientSearch(confession.recipient),
-    sealedAt: confession.sealedAt,
-  });
-  await batch.commit();
 
   return true;
 }

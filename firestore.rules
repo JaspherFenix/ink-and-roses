@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /confessions/{confessionId} {
-      allow get: if true;
+      allow get: if resource.data.status == 'approved';
       allow list: if false;
 
       allow create: if request.resource.data.keys().hasOnly([
@@ -12,6 +12,7 @@ service cloud.firestore {
           'message',
           'sketch',
           'sealedAt',
+          'status',
           'demo',
           'createdAt'
         ])
@@ -20,14 +21,15 @@ service cloud.firestore {
         && request.resource.data.id.size() <= 100
         && request.resource.data.recipient is string
         && request.resource.data.recipient.size() > 0
-        && request.resource.data.recipient.size() <= 120
+        && request.resource.data.recipient.size() <= 80
         && request.resource.data.message is string
         && request.resource.data.message.size() > 0
-        && request.resource.data.message.size() <= 5000
+        && request.resource.data.message.size() <= 1000
         && request.resource.data.sealedAt is string
         && request.resource.data.sealedAt.size() <= 40
+        && request.resource.data.status == 'pending'
         && request.resource.data.demo == false
-        && request.resource.data.createdAt is timestamp
+        && request.resource.data.createdAt == request.time
         && request.resource.data.sketch is map
         && request.resource.data.sketch.keys().hasOnly([
           'version',
@@ -53,22 +55,7 @@ service cloud.firestore {
       allow list: if request.query.limit != null
         && request.query.limit <= 9;
 
-      allow create: if request.resource.data.keys().hasOnly([
-          'recipient',
-          'recipientSearch',
-          'sealedAt'
-        ])
-        && confessionId.size() <= 100
-        && request.resource.data.recipient is string
-        && request.resource.data.recipient.size() > 0
-        && request.resource.data.recipient.size() <= 120
-        && request.resource.data.recipientSearch is string
-        && request.resource.data.recipientSearch.size() > 0
-        && request.resource.data.recipientSearch.size() <= 120
-        && request.resource.data.sealedAt is string
-        && request.resource.data.sealedAt.size() <= 40;
-
-      allow update, delete: if false;
+      allow create, update, delete: if false;
     }
   }
 }

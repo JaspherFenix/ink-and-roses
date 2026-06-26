@@ -3,7 +3,7 @@ import {
   loadFirebaseConfession,
   saveFirebaseConfession,
   searchFirebaseConfessions,
-} from "./firebase-client.js?v=20260625-2";
+} from "./firebase-client.js?v=20260626-1";
 
 const petalField = document.querySelector(".petal-field");
 const searchInput = document.querySelector("#searchName");
@@ -62,6 +62,8 @@ const firebaseConfig = window.INK_AND_ROSES_FIREBASE_CONFIG || {};
 const maximumSketchStrokes = 240;
 const maximumSketchPoints = 12000;
 const maximumPointsPerStroke = 1600;
+const maximumRecipientLength = 80;
+const maximumMessageLength = 1000;
 const minimumPointDistance = 0.0015;
 const searchPageSize = 8;
 
@@ -208,6 +210,7 @@ function normalizeConfession(confession) {
     sketchData,
     legacySketch: legacySketch || (sketchData ? "" : blankSketchData()),
     sealedAt: confession.sealedAt || new Date().toISOString(),
+    status: confession.status === "pending" ? "pending" : "approved",
     demo: Boolean(confession.demo),
   };
 }
@@ -795,7 +798,7 @@ function renderMissingLetter() {
   }
 
   if (sealedMessage) {
-    sealedMessage.textContent = "Return to the registry and choose another name.";
+    sealedMessage.textContent = "This confession may still be waiting for approval, or it may no longer be available.";
   }
 
   if (letterSealName) {
@@ -1175,12 +1178,23 @@ async function sealConfession(event) {
     return;
   }
 
+  if (recipient.length > maximumRecipientLength) {
+    setStatus(`The name must be ${maximumRecipientLength} characters or fewer.`);
+    return;
+  }
+
+  if (message.length > maximumMessageLength) {
+    setStatus(`The message must be ${maximumMessageLength} characters or fewer.`);
+    return;
+  }
+
   const confession = normalizeConfession({
     id: makeId(),
     recipient,
     message,
     sketch: createSketchData(),
     sealedAt: new Date().toISOString(),
+    status: "pending",
     demo: false,
   });
 
@@ -1207,7 +1221,7 @@ async function sealConfession(event) {
     clearReferenceImage();
     resetSketch();
     updateMessageMetrics();
-    setStatus("Your anonymous confession has been saved.");
+    setStatus("Your anonymous confession has been sent for approval.");
   } catch (error) {
     console.warn("Ink and Roses could not save this confession to Firebase.", error);
     setStatus("Firebase could not save this confession. Please try again.");
